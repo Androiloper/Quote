@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+
+
+
+    <color name="textColorPrimary">#FFFFFF</color>
+    <color name="textColorSecondary">#B3FFFFFF</color>
+    <color name="colorPrimary">#00BCD4</color>
+    <color name="colorPrimaryDark">#0097A7</color>
+    <color name="colorAccent">#FFEB3B</color>
+    <color name="semi_transparent_background">#80000000</color> <!-- Existing color assumed -->
+    <color name="gold">#FFD700</color> <!-- Existing color assumed -->
+
+    <!-- Primary colors -->
+    <color name="primary_light">#6200EE</color>
+    <color name="primary_dark">#BB86FC</color>
+
+    <!-- Background colors -->
+    <color name="background_light">#FAFAFA</color>
+    <color name="background_dark">#121212</color>
+    <color name="background_dark_gray">#333333</color>
+
+    <!-- Surface colors -->
+    <color name="surface_light">#FFFFFF</color>
+    <color name="surface_dark">#1E1E1E</color>
+    <color name="surface_dark_gray">#424242</color>
+
+    <!-- Accent colors -->
+    <color name="accent_mint">#03DAC5</color>
+    <color name="accent_rose">#F2C4CE</color>
+    <color name="neutral_gray">#9E9E9E</color>
+
+    <!-- Text colors -->
+    <color name="text_primary">#121212</color>
+    <color name="text_secondary">#747474</color>
+    <color name="text_primary_dark">#ECECEC</color>
+    <color name="text_secondary_dark">#AAAAAA</color>
+
+    <!-- Add these to your colors.xml -->
+    <color name="primary_container">#E6F4FF</color> <!-- Light blue container -->
+    <color name="on_primary_container">#001E30</color> <!-- Dark text for primary container -->
+    <color name="secondary_container">#E8DDFF</color> <!-- Light purple container -->
+    <color name="on_secondary_container">#220056</color> <!-- Dark text for secondary container -->
+    <color name="material_on_surface_emphasis_high_type">#DE000000</color> <!-- For dark text on light background -->
+
+</resources>

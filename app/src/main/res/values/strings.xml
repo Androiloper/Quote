@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Daily Proverbs</string>
+    <string name="toggle_quotes_off">Enable Lock Screen Quotes</string>
+    <string name="toggle_quotes_screen_on">Display on Screen On</string>
+    <string name="toggle_quotes_unlock">Display on Unlock</string>
+    <string name="current_quote_label">Current Quote:</string>
+    <string name="no_quote_displayed">No quote currently displayed</string>
+    <string name="service_notification_title">Daily Proverbs</string>
+    <string name="service_notification_text">Displaying quotes on your lock screen</string>
+    <string name="permission_overlay_required">Overlay permission is required for lock screen quotes</string>
+    <string name="permission_notification_required">Notification permission is needed for the service to run properly</string>
+    <string name="quotes_disabled">Lock screen quotes disabled</string>
+    <string name="quotes_enabled_screen_on">Quotes will appear when screen turns on</string>
+    <string name="quotes_enabled_unlock">Quotes will appear on unlock</string>
+    <string name="app_description">Daily wisdom from the Book of Proverbs</string>
+    <string name="welcome_message">Welcome to the App</string>
+    <string name="add_promise">Add promise</string>
+    <string name="promise_title">Promise Title</string>
+
+
+
+
+    <string name="display_on_unlock">Display on Unlock</string>
+    <string name="display_promises">Display Promises</string>
+    <string name="proverbs">PROVERBS</string>
+    <string name="promises">PROMISES</string>
+
+    <string name="proverbs_pagination">Proverbs navigation</string>
+    <string name="promises_pagination">Promises navigation</string>
+
+    <string name="hint_title">Title</string>
+    <string name="hint_verse">Bible Verse</string>
+    <string name="hint_reference">Reference</string>
+    <string name="action_add">Add</string>
+    <string name="action_cancel">Cancel</string>
+
+    <string name="daily_proverb">Daily proverb text</string>
+    <string name="proverb_reference">Proverb reference</string>
+</resources>

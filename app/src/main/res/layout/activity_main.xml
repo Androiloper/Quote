@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorSurface">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/topAppBar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            app:title="Daily Wisdom"
+            app:titleCentered="true"
+            app:menu="@menu/top_app_bar" />
+
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Control Cards -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                style="?attr/materialCardViewFilledStyle">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Settings"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:layout_marginBottom="16dp"
+                        android:textColor="@color/material_on_surface_emphasis_high_type"/>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/toggleQuotesButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Display on Unlock"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        app:strokeColor="?attr/colorPrimary"
+                        app:backgroundTint="@color/surface_light"
+                        android:textColor="?attr/colorPrimary"
+                        android:layout_marginBottom="8dp"
+                        android:layout_gravity="center_horizontal"/>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/displayPromisesButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Display Promises"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        app:strokeColor="?attr/colorPrimary"
+                        app:backgroundTint="@color/surface_light"
+                        android:textColor="?attr/colorPrimary"
+                        android:layout_gravity="center_horizontal"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Proverbs Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/promises_card_container"
+                android:layout_width="match_parent"
+                android:layout_height="300dp"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="PROVERBS"
+                        android:textAppearance="?attr/textAppearanceLabelLarge"
+                        android:padding="12dp"
+                        android:background="@color/primary_container"
+                        android:textColor="@color/on_primary_container"/>
+
+                    <androidx.viewpager2.widget.ViewPager2
+                        android:id="@+id/quotePager"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"/>
+
+                    <com.google.android.material.tabs.TabLayout
+                        android:id="@+id/tabLayout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:tabGravity="center"
+                        app:tabIndicatorHeight="0dp"
+                        android:contentDescription="Proverbs navigation tabs"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Promises Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/promises_card"
+                android:layout_width="match_parent"
+                android:layout_height="300dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp">
+
+                <androidx.coordinatorlayout.widget.CoordinatorLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="PROMISES"
+                            android:textAppearance="?attr/textAppearanceLabelLarge"
+                            android:padding="12dp"
+                            android:background="@color/secondary_container"
+                            android:textColor="@color/on_secondary_container"/>
+
+                        <androidx.viewpager2.widget.ViewPager2
+                            android:id="@+id/promisesPager"
+                            android:layout_width="match_parent"
+                            android:layout_height="0dp"
+                            android:layout_weight="1"/>
+
+                        <com.google.android.material.tabs.TabLayout
+                            android:id="@+id/promisesTabLayout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            app:tabGravity="center"
+                            app:tabIndicatorHeight="0dp"
+                            android:contentDescription="Promises navigation tabs"/>
+                    </LinearLayout>
+
+                    <com.google.android.material.floatingactionbutton.FloatingActionButton
+                        android:id="@+id/fab_add_promise"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="bottom|end"
+                        android:layout_margin="16dp"
+                        android:contentDescription="Add Promise"
+                        app:srcCompat="@drawable/ic_add"/>
+                </androidx.coordinatorlayout.widget.CoordinatorLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

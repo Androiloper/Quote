@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/proverb_background"
+    android:padding="16dp"
+    android:layout_margin="24dp">
+
+    <TextView
+        android:id="@+id/proverb_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        style="@style/ProverbTextStyle"
+        android:text="The fear of the LORD is the beginning of knowledge, but fools despise wisdom and instruction." />
+
+    <TextView
+        android:id="@+id/proverb_reference"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        style="@style/ProverbReferenceStyle"
+        android:text="Proverbs 1:7" />
+
+</LinearLayout>

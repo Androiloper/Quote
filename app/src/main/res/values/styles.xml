@@ -1,0 +1,64 @@
+<resources>
+    <style name="Theme.QuoteX" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="colorPrimaryContainer">@color/primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/on_primary_container</item>
+        <item name="colorSecondaryContainer">@color/secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/on_secondary_container</item>
+        <item name="colorSurface">@color/surface_light</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorSurfaceVariant">@color/surface_dark</item>
+        <item name="colorOnSurfaceVariant">@color/text_secondary</item>
+        <item name="android:statusBarColor">@color/background_dark</item>
+        <item name="android:navigationBarColor">@color/background_dark</item>
+        <item name="android:windowBackground">@color/background_dark</item>
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+
+    <!-- App Name Style -->
+    <style name="AppNameTextStyle" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:textColor">@color/textColorPrimary</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <!-- App Description Style -->
+    <style name="AppDescriptionTextStyle" parent="TextAppearance.Material3.BodyLarge">
+        <item name="android:textColor">@color/textColorSecondary</item>
+        <item name="android:fontFamily">sans-serif</item>
+    </style>
+
+    <!-- Quote Label Style -->
+    <style name="QuoteLabelTextStyle" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:textColor">@color/textColorPrimary</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <!-- Proverb Text Style -->
+    <style name="ProverbTextStyleModern" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:textColor">@color/textColorPrimary</item>
+        <item name="android:fontFamily">sans-serif-bold</item>
+        <item name="android:textSize">20sp</item>
+    </style>
+
+    <!-- Proverb Reference Style -->
+    <style name="ProverbReferenceStyleModern" parent="TextAppearance.Material3.BodySmall">
+        <item name="android:textColor">@color/textColorSecondary</item>
+        <item name="android:fontFamily">sans-serif-italic</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <!-- Restored Styles from themes.xml -->
+    <style name="TextAppearance.Quotex.Headline4" parent="TextAppearance.Material3.HeadlineLarge">
+        <item name="fontFamily">serif</item>
+        <item name="android:fontFamily">serif</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="TextAppearance.Quotex.Body1" parent="TextAppearance.Material3.BodyLarge">
+        <item name="fontFamily">serif</item>
+        <item name="android:fontFamily">serif</item>
+    </style>
+</resources>
