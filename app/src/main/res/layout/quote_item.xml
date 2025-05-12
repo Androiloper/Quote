@@ -1,29 +1,81 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:gravity="center"
-    android:padding="16dp">
+    android:layout_height="wrap_content"
+    android:background="#80000000">
 
-    <TextView
-        android:id="@+id/proverb_text"
+    <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="18sp"
-        android:textAlignment="center"
-        android:layout_marginBottom="16dp"
-        android:contentDescription="@string/daily_proverb"/>
+        android:layout_margin="16dp"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="8dp"
+        app:strokeColor="#4000A7FE"
+        app:strokeWidth="1dp"
+        android:backgroundTint="#80162036">
 
-    <TextView
-        android:id="@+id/proverb_reference"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="14sp"
-        android:textStyle="italic"
-        android:background="?attr/colorSurfaceVariant"
-        android:padding="4dp"
-        android:layout_gravity="end"
-        android:contentDescription="@string/proverb_reference"/>
-</LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp">
+
+            <!-- Cosmic header -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/ic_cosmic_star"
+                    android:layout_gravity="center_vertical"
+                    app:tint="#00F5A0"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="COSMIC WISDOM"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="#00F5A0"
+                    android:layout_marginStart="8dp"/>
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="DAILY PROVERB"
+                    android:textSize="10sp"
+                    android:textColor="#8E44EC"/>
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/proverb_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"
+                android:textColor="#EEF2FF"
+                android:textAlignment="center"
+                android:layout_marginBottom="16dp"/>
+
+            <TextView
+                android:id="@+id/proverb_reference"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:textStyle="italic"
+                android:textColor="#00A7FE"
+                android:layout_gravity="end"
+                android:background="#33162036"
+                android:padding="4dp"/>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+</FrameLayout>

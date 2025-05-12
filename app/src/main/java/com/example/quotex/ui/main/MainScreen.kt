@@ -15,7 +15,7 @@ import com.example.quotex.R
 import com.example.quotex.model.Quote
 
 @Composable
-fun MainScreen(
+fun OldMainScreen(
     modifier: Modifier = Modifier,
     viewModel: MainViewModel,
     onPromisesClick: () -> Unit,
