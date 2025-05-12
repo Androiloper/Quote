@@ -1,4 +1,4 @@
-package com.example.quotex
+package com.example.quotex.ui.promises
 
 import android.content.Context
 import android.os.Bundle
@@ -7,10 +7,12 @@ import android.view.View
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.quotex.PromiseAdapter
+import com.example.quotex.R
+import com.example.quotex.model.Promise
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 import com.google.gson.Gson

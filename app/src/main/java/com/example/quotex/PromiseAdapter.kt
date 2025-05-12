@@ -7,7 +7,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import com.example.quotex.R
+import com.example.quotex.model.Promise
+
 class PromiseAdapter(
     private var promises: List<Promise> = emptyList(),
     private val onItemClick: (Promise) -> Unit = {}

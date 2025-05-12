@@ -1,4 +1,4 @@
-package com.example.quotex
+package com.example.quotex.model
 
 data class Promise(
     val id: Long = System.currentTimeMillis(), // Unique identifier
