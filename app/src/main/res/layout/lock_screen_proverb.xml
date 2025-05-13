@@ -1,39 +1,93 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:background="#99000000">
+    android:layout_height="wrap_content">
 
-    <com.google.android.material.card.MaterialCardView
+    <!-- Semi-transparent background -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#80000000"/>
+
+    <!-- Futuristic card with glowing effects -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        style="?attr/materialCardViewFilledStyle">
+        android:orientation="vertical"
+        android:layout_margin="24dp"
+        android:padding="20dp"
+        android:background="@drawable/futuristic_card_background">
 
+        <!-- Cosmic header -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="24dp">
+            android:orientation="horizontal"
+            android:layout_marginBottom="12dp">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_cosmic_star"
+                android:layout_gravity="center_vertical"
+                app:tint="#00F5A0"/>
 
             <TextView
-                android:id="@+id/quote_text"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textAppearance="?attr/textAppearanceBodyLarge"
-                android:textColor="?attr/colorOnSurface"
-                android:layout_marginBottom="16dp"
-                android:textAlignment="center"/>
-
-            <TextView
-                android:id="@+id/quote_reference"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textAppearance="?attr/textAppearanceBodyMedium"
-                android:textStyle="italic"
-                android:textColor="?attr/colorPrimary"
-                android:layout_gravity="end"/>
+                android:text="COSMIC WISDOM"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#00F5A0"
+                android:layout_marginStart="8dp"/>
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="DAILY PROVERB"
+                android:textSize="12sp"
+                android:textColor="#8E44EC"/>
         </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
+
+        <!-- Glowing divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#4000F5A0"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- Quote text with glow effect -->
+        <TextView
+            android:id="@+id/proverb_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="18sp"
+            android:textColor="#EEF2FF"
+            android:textAlignment="center"
+            android:layout_marginBottom="16dp"
+            android:shadowColor="#8E44EC"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="6"/>
+
+        <!-- Reference with cyber effect -->
+        <TextView
+            android:id="@+id/proverb_reference"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:textStyle="italic"
+            android:textColor="#00A7FE"
+            android:layout_gravity="end"
+            android:background="#33162036"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="4dp"/>
+    </LinearLayout>
 </FrameLayout>

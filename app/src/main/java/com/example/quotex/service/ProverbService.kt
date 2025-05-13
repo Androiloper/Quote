@@ -1,6 +1,7 @@
 // app/src/main/java/com/example/quotex/service/ProverbService.kt
 package com.example.quotex.service
 
+import android.animation.ValueAnimator
 import android.app.KeyguardManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -119,29 +120,107 @@ class ProverbService : Service() {
             .build()
     }
 
+    /*
     private fun showProverb() {
-        if (displayMode == 0 || !Settings.canDrawOverlays(this)) {
-            Log.w(tag, "Cannot show proverb: mode off or no overlay permission")
+        if (displayMode == 0) {
+            Log.d(tag, "Display mode is off (0), not showing proverb")
             return
         }
 
+        if (!Settings.canDrawOverlays(this)) {
+            Log.e(tag, "Cannot show proverb: no overlay permission")
+            return
+        }
+
+        Log.d(tag, "Starting to show proverb with display mode: $displayMode")
+
+        // Add a delay for unlock mode to ensure it appears after system UI
         serviceScope.launch {
-            val quote = proverbsRepository.getRandomProverbForCurrentDay()
-            if (quote != null) {
-                displayQuote(quote)
+            if (displayMode == 2) {
+                // Add delay for unlock mode
+                kotlinx.coroutines.delay(500)
+            }
+
+            try {
+                val quote = proverbsRepository.getRandomProverbForCurrentDay()
+                if (quote != null) {
+                    Log.d(tag, "Retrieved quote: ${quote.text.take(20)}...")
+                    displayQuote(quote)
+                } else {
+                    Log.e(tag, "Failed to get a quote")
+                }
+            } catch (e: Exception) {
+                Log.e(tag, "Error in showProverb: ${e.message}", e)
+                e.printStackTrace()
             }
         }
     }
 
+     */
+
+    // Fix the showProverb method for better unlock handling
+    private fun showProverb() {
+        if (displayMode == 0 || !Settings.canDrawOverlays(this)) {
+            Log.d(tag, "Cannot show proverb: mode=${displayMode}, overlay permission=${Settings.canDrawOverlays(this)}")
+            return
+        }
+
+        Log.d(tag, "Preparing to show proverb with display mode: $displayMode")
+
+        // IMPORTANT: For unlock mode, add delay to ensure it appears properly
+        serviceScope.launch {
+            if (displayMode == 2) {
+                // This delay is crucial for unlock visibility - gives system UI time to settle
+                Log.d(tag, "Adding delay for unlock mode")
+                kotlinx.coroutines.delay(700)
+            }
+
+            // Get and display the quote
+            try {
+                val quote = proverbsRepository.getRandomProverbForCurrentDay()
+                if (quote != null) {
+                    Log.d(tag, "Displaying quote after unlock: ${quote.text.take(20)}...")
+                    displayQuote(quote)
+                } else {
+                    Log.e(tag, "No quote available")
+                }
+            } catch (e: Exception) {
+                Log.e(tag, "Error getting quote: ${e.message}", e)
+            }
+        }
+    }
+    private fun fetchAndShowProverb() {
+        serviceScope.launch {
+            try {
+                val quote = proverbsRepository.getRandomProverbForCurrentDay()
+                if (quote != null) {
+                    displayQuote(quote)
+                } else {
+                    Log.w(tag, "No quote available to display")
+                }
+            } catch (e: Exception) {
+                Log.e(tag, "Error fetching quote: ${e.message}", e)
+            }
+        }
+    }
+
+    // In ProverbService.kt - updating the displayQuote method
+
+    // Update this method to use correct layout and improve display
     private fun displayQuote(quote: Quote) {
         try {
             if (proverbView != null) {
-                windowManager.removeView(proverbView)
+                try {
+                    windowManager.removeView(proverbView)
+                } catch (e: Exception) {
+                    Log.e(tag, "Error removing existing view: ${e.message}")
+                }
                 proverbView = null
             }
 
             val inflater = LayoutInflater.from(this)
-            proverbView = inflater.inflate(R.layout.quote_item, null)
+            // Use the correct layout
+            proverbView = inflater.inflate(R.layout.lock_screen_proverb, null)
 
             val proverbText = proverbView?.findViewById<TextView>(R.id.proverb_text)
             val proverbReference = proverbView?.findViewById<TextView>(R.id.proverb_reference)
@@ -149,34 +228,72 @@ class ProverbService : Service() {
             proverbText?.text = quote.text
             proverbReference?.text = quote.reference
 
+            /*
+            // Improved window parameters for better visibility
             val params = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                     WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
                 else
-                    WindowManager.LayoutParams.TYPE_PHONE,
+                    WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                        WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                        WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED,
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.CENTER
-                width = WindowManager.LayoutParams.MATCH_PARENT
-                height = WindowManager.LayoutParams.WRAP_CONTENT
+                // Ensure the view has proper z-order
+                flags = flags or WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM
+                // Add animation for smoother appearance
+                windowAnimations = android.R.style.Animation_Toast
             }
 
-            windowManager.addView(proverbView, params)
-            Log.d(tag, "Proverb view added to window")
+             */
 
-            // Auto-hide after 10 seconds
+            // CRITICAL FIX: Proper window parameters for lock screen visibility
+            val params = WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                else
+                    WindowManager.LayoutParams.TYPE_SYSTEM_ALERT, // Better for system overlays
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                        WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or  // Critical for unlock visibility
+                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                        WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,      // Ensures visibility
+                PixelFormat.TRANSLUCENT
+            ).apply {
+                gravity = Gravity.CENTER
+                // Ensure proper layering in the window stack
+                flags = flags or WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM
+            }
+
+            Log.d(tag, "Adding futuristic proverb view to window")
+            windowManager.addView(proverbView, params)
+
+            // Add a glow animation effect
+            val textView = proverbText
+            val valueAnimator = ValueAnimator.ofFloat(0.8f, 1.0f)
+            valueAnimator.duration = 2000
+            valueAnimator.repeatCount = ValueAnimator.INFINITE
+            valueAnimator.repeatMode = ValueAnimator.REVERSE
+            valueAnimator.addUpdateListener { animator ->
+                val value = animator.animatedValue as Float
+                textView?.alpha = value
+            }
+            valueAnimator.start()
+
+            // Auto-hide after delay
             serviceScope.launch {
-                kotlinx.coroutines.delay(10000)
+                kotlinx.coroutines.delay(15000)
+                valueAnimator.cancel()
                 hideProverb()
             }
         } catch (e: Exception) {
             Log.e(tag, "Failed to add proverb view: ${e.message}", e)
-            hideProverb()
+            e.printStackTrace()
         }
     }
 
@@ -207,18 +324,54 @@ class ProverbService : Service() {
         return !keyguardManager.isKeyguardLocked
     }
 
+    /*
     inner class ScreenReceiver : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            Log.d(tag, "Screen event received: ${intent?.action}")
-            when (intent?.action) {
+            val action = intent?.action
+            Log.d(tag, "ScreenReceiver received action: $action")
+
+            when (action) {
                 Intent.ACTION_SCREEN_ON -> {
                     if (displayMode == 1) {
+                        Log.d(tag, "Screen on with mode 1, showing proverb")
                         showProverb()
                     }
                 }
                 Intent.ACTION_USER_PRESENT -> {
-                    Log.d(tag, "Device unlocked, displayMode: $displayMode")
+                    // This is the key event for unlock
+                    Log.d(tag, "User present/unlocked with mode: $displayMode")
                     if (displayMode == 2) {
+                        // Explicitly log the intent to show a proverb
+                        Log.d(tag, "Display mode is 2, will show proverb on unlock")
+                        showProverb()
+                    }
+                }
+                Intent.ACTION_SCREEN_OFF -> {
+                    hideProverb()
+                }
+            }
+        }
+    }
+
+     */
+
+    inner class ScreenReceiver : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val action = intent?.action
+            Log.d(tag, "Screen event: $action, display mode: $displayMode")
+
+            when (action) {
+                Intent.ACTION_SCREEN_ON -> {
+                    if (displayMode == 1) {
+                        Log.d(tag, "Screen on with display mode 1, showing proverb")
+                        showProverb()
+                    }
+                }
+                Intent.ACTION_USER_PRESENT -> {
+                    // CRITICAL FIX: Better handling of unlock event
+                    if (displayMode == 2) {
+                        Log.d(tag, "User present with display mode 2, showing proverb")
+                        // The delay in showProverb is crucial here
                         showProverb()
                     }
                 }

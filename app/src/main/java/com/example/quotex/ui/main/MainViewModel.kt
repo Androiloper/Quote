@@ -1,6 +1,10 @@
 // ui/main/MainViewModel.kt
 package com.example.quotex.ui.main
 
+import android.app.ActivityManager
+import android.content.Context
+import android.content.Intent
+import android.os.Build
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModel
@@ -11,6 +15,7 @@ import com.example.quotex.data.repository.UserPreferencesRepository
 import com.example.quotex.data.repository.ProverbsRepository
 import com.example.quotex.model.Promise
 import com.example.quotex.model.Quote
+import com.example.quotex.service.ProverbService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -142,4 +147,35 @@ class MainViewModel @Inject constructor(
             }
         }
     }
+
+    fun checkAndRestartProverbService(context: Context) {
+        viewModelScope.launch {
+            val currentMode = displayMode.value ?: 0
+            if (currentMode > 0) {
+                // Check if service is running
+                val serviceRunning = isServiceRunning(context, ProverbService::class.java)
+                Log.d("MainViewModel", "Proverb service running: $serviceRunning, mode: $currentMode")
+
+                if (!serviceRunning) {
+                    // Service not running but should be, restart it
+                    val serviceIntent = Intent(context, ProverbService::class.java)
+                    serviceIntent.putExtra("display_mode", currentMode)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        context.startForegroundService(serviceIntent)
+                    } else {
+                        context.startService(serviceIntent)
+                    }
+                    Log.d("MainViewModel", "Restarted proverb service with mode: $currentMode")
+                }
+            }
+        }
+    }
+
+    private fun isServiceRunning(context: Context, serviceClass: Class<*>): Boolean {
+        val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        return manager.getRunningServices(Integer.MAX_VALUE)
+            .any { it.service.className == serviceClass.name }
+    }
+
 }
+
