@@ -94,6 +94,7 @@ fun GlassCard(
     Box(
         modifier = modifier
     ) {
+        /*
         // Glow effect behind the card
         Box(
             modifier = Modifier
@@ -114,6 +115,8 @@ fun GlassCard(
                     )
                 }
         )
+
+         */
 
         // Actual card
         Card(
