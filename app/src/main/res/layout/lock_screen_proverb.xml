@@ -5,19 +5,19 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
-    <!-- Semi-transparent background -->
+    <!-- Darker semi-transparent background for better visibility -->
     <View
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#80000000"/>
+        android:background="#A0000000"/>
 
-    <!-- Futuristic card with glowing effects -->
+    <!-- Futuristic card with improved glowing effects -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:layout_margin="24dp"
-        android:padding="20dp"
+        android:padding="24dp"
         android:background="@drawable/futuristic_card_background">
 
         <!-- Cosmic header -->
@@ -28,8 +28,8 @@
             android:layout_marginBottom="12dp">
 
             <ImageView
-                android:layout_width="20dp"
-                android:layout_height="20dp"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
                 android:src="@drawable/ic_cosmic_star"
                 android:layout_gravity="center_vertical"
                 app:tint="#00F5A0"/>
@@ -38,7 +38,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="COSMIC WISDOM"
-                android:textSize="14sp"
+                android:textSize="18sp"
                 android:textStyle="bold"
                 android:textColor="#00F5A0"
                 android:layout_marginStart="8dp"/>
@@ -52,42 +52,43 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="DAILY PROVERB"
-                android:textSize="12sp"
+                android:textSize="14sp"
                 android:textColor="#8E44EC"/>
         </LinearLayout>
 
-        <!-- Glowing divider -->
+        <!-- Glowing divider - brighter -->
         <View
             android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="#4000F5A0"
-            android:layout_marginBottom="16dp"/>
+            android:layout_height="2dp"
+            android:background="#8000F5A0"
+            android:layout_marginBottom="20dp"/>
 
-        <!-- Quote text with glow effect -->
+        <!-- Quote text with enhanced glow effect -->
         <TextView
             android:id="@+id/proverb_text"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="18sp"
-            android:textColor="#EEF2FF"
+            android:textSize="22sp"
+            android:textColor="#FFFFFF"
             android:textAlignment="center"
-            android:layout_marginBottom="16dp"
+            android:layout_marginBottom="24dp"
+            android:textStyle="bold"
             android:shadowColor="#8E44EC"
             android:shadowDx="0"
             android:shadowDy="0"
-            android:shadowRadius="6"/>
+            android:shadowRadius="10"/>
 
-        <!-- Reference with cyber effect -->
+        <!-- Reference with enhanced cyber effect -->
         <TextView
             android:id="@+id/proverb_reference"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="14sp"
+            android:textSize="18sp"
             android:textStyle="italic"
             android:textColor="#00A7FE"
             android:layout_gravity="end"
-            android:background="#33162036"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="4dp"/>
+            android:background="#50162036"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="8dp"/>
     </LinearLayout>
 </FrameLayout>

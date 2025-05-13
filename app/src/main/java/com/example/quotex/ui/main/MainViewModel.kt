@@ -7,6 +7,7 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
@@ -20,17 +21,15 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import java.lang.Exception
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val proverbsRepository: ProverbsRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
-    // Add to constructor parameters of MainViewModel
     private val promisesRepository: PromisesRepository,
-
-
-
-    ) : ViewModel() {
+) : ViewModel() {
+    private val TAG = "MainViewModel"
 
     // Add this property to fetch promises
     val promises: LiveData<List<Promise>> = promisesRepository.getAllPromises().asLiveData()
@@ -42,28 +41,31 @@ class MainViewModel @Inject constructor(
 
     val displayPromises: LiveData<Boolean> = userPreferencesRepository.displayPromises.asLiveData()
 
+    // Service status tracking
+    private val _serviceRunning = MutableLiveData<Boolean>(false)
+    val serviceRunning: LiveData<Boolean> = _serviceRunning
+
     // Initialize with default values
     init {
         viewModelScope.launch {
             try {
                 // Set default for displayPromises
                 val currentDisplayPromises = userPreferencesRepository.displayPromises.first()
-                Log.d("MainViewModel", "Current displayPromises value: $currentDisplayPromises")
+                Log.d(TAG, "Current displayPromises value: $currentDisplayPromises")
 
                 // Set displayPromises to true by default if not already set
-
+                if (!currentDisplayPromises) {
                     userPreferencesRepository.setDisplayPromises(true)
-
+                }
 
                 // Check the current display mode correctly
                 val currentDisplayMode = userPreferencesRepository.displayMode.first()
-                Log.d("MainViewModel", "Current displayMode value: $currentDisplayMode")
+                Log.d(TAG, "Current displayMode value: $currentDisplayMode")
 
-                // Optionally set a default display mode other than 0 if needed
-                // if (currentDisplayMode == 0) {
-                //     userPreferencesRepository.setDisplayMode(1)
+                // Update service running status
+                _serviceRunning.value = ProverbService.isServiceRunning
             } catch (e: Exception) {
-                Log.e("MainViewModel", "Error setting default preferences", e)
+                Log.e(TAG, "Error setting default preferences", e)
             }
         }
     }
@@ -73,6 +75,9 @@ class MainViewModel @Inject constructor(
             val currentMode = displayMode.value ?: 0
             val newMode = (currentMode + 1) % 3
             userPreferencesRepository.setDisplayMode(newMode)
+
+            // Update service based on new mode
+            updateServiceState()
         }
     }
 
@@ -86,13 +91,16 @@ class MainViewModel @Inject constructor(
     fun setDisplayMode(mode: Int) {
         viewModelScope.launch {
             userPreferencesRepository.setDisplayMode(mode)
+
+            // Update service based on new mode
+            updateServiceState()
         }
     }
 
     // Method to force displayPromises to true (useful for troubleshooting)
     fun enablePromisesDisplay() {
         viewModelScope.launch {
-            Log.d("MainViewModel", "Explicitly enabling promises display")
+            Log.d(TAG, "Explicitly enabling promises display")
             userPreferencesRepository.setDisplayPromises(true)
         }
     }
@@ -101,11 +109,11 @@ class MainViewModel @Inject constructor(
     fun refreshQuotes() {
         viewModelScope.launch {
             try {
-                Log.d("MainViewModel", "Manually refreshing quotes...")
+                Log.d(TAG, "Manually refreshing quotes...")
                 val quotes = proverbsRepository.getProverbsForCurrentDay().first()
-                Log.d("MainViewModel", "Refreshed ${quotes.size} quotes")
+                Log.d(TAG, "Refreshed ${quotes.size} quotes")
             } catch (e: Exception) {
-                Log.e("MainViewModel", "Error refreshing quotes: ${e.message}", e)
+                Log.e(TAG, "Error refreshing quotes: ${e.message}", e)
             }
         }
     }
@@ -114,21 +122,20 @@ class MainViewModel @Inject constructor(
     fun refreshPromises() {
         viewModelScope.launch {
             try {
-                Log.d("MainViewModel", "Refreshing promises data")
+                Log.d(TAG, "Refreshing promises data")
                 // This will cause the Flow to be re-collected
                 promisesRepository.getAllPromises().first()
             } catch (e: Exception) {
-                Log.e("MainViewModel", "Error refreshing promises: ${e.message}", e)
+                Log.e(TAG, "Error refreshing promises: ${e.message}", e)
             }
         }
     }
-
 
     fun forceInitializePromises() {
         viewModelScope.launch {
             try {
                 userPreferencesRepository.setDisplayPromises(true)
-                Log.d("MainViewModel", "Forced promises display to be enabled")
+                Log.d(TAG, "Forced promises display to be enabled")
 
                 // Force add a sample promise if none exist
                 val existingPromises = promisesRepository.getAllPromises().first()
@@ -140,42 +147,91 @@ class MainViewModel @Inject constructor(
                         reference = "Proverbs 3:5"
                     )
                     promisesRepository.addPromise(samplePromise)
-                    Log.d("MainViewModel", "Added sample promise")
+                    Log.d(TAG, "Added sample promise")
                 }
             } catch (e: Exception) {
-                Log.e("MainViewModel", "Failed to force initialize promises", e)
+                Log.e(TAG, "Failed to force initialize promises", e)
             }
         }
     }
 
+    // Improved service management with more reliable detection
     fun checkAndRestartProverbService(context: Context) {
         viewModelScope.launch {
             val currentMode = displayMode.value ?: 0
+
+            // Update internal tracking
+            _serviceRunning.value = ProverbService.isServiceRunning
+
             if (currentMode > 0) {
-                // Check if service is running
-                val serviceRunning = isServiceRunning(context, ProverbService::class.java)
-                Log.d("MainViewModel", "Proverb service running: $serviceRunning, mode: $currentMode")
+                // Check if service is running using our static flag
+                val serviceRunning = ProverbService.isServiceRunning
+                Log.d(TAG, "Proverb service running check: $serviceRunning, mode: $currentMode")
 
                 if (!serviceRunning) {
                     // Service not running but should be, restart it
-                    val serviceIntent = Intent(context, ProverbService::class.java)
-                    serviceIntent.putExtra("display_mode", currentMode)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        context.startForegroundService(serviceIntent)
-                    } else {
-                        context.startService(serviceIntent)
-                    }
-                    Log.d("MainViewModel", "Restarted proverb service with mode: $currentMode")
+                    startProverbService(context, currentMode)
+                } else {
+                    // Service is running, update its display mode
+                    updateServiceDisplayMode(context, currentMode)
                 }
+            } else if (ProverbService.isServiceRunning) {
+                // Service running but should be off, stop it
+                stopProverbService(context)
             }
         }
     }
 
-    private fun isServiceRunning(context: Context, serviceClass: Class<*>): Boolean {
-        val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        return manager.getRunningServices(Integer.MAX_VALUE)
-            .any { it.service.className == serviceClass.name }
+    private fun updateServiceState() {
+        viewModelScope.launch {
+            val mode = userPreferencesRepository.displayMode.first()
+            _serviceRunning.value = mode > 0 && ProverbService.isServiceRunning
+        }
     }
 
-}
+    private fun startProverbService(context: Context, displayMode: Int) {
+        try {
+            val serviceIntent = Intent(context, ProverbService::class.java).apply {
+                action = ProverbService.ACTION_START_SERVICE
+                putExtra(ProverbService.EXTRA_DISPLAY_MODE, displayMode)
+            }
 
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(serviceIntent)
+            } else {
+                context.startService(serviceIntent)
+            }
+            Log.d(TAG, "Started proverb service with mode: $displayMode")
+            _serviceRunning.value = true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start service", e)
+            _serviceRunning.value = false
+        }
+    }
+
+    private fun stopProverbService(context: Context) {
+        try {
+            val serviceIntent = Intent(context, ProverbService::class.java).apply {
+                action = ProverbService.ACTION_STOP_SERVICE
+            }
+            context.startService(serviceIntent)
+            Log.d(TAG, "Requested service stop")
+            _serviceRunning.value = false
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to stop service", e)
+        }
+    }
+
+    private fun updateServiceDisplayMode(context: Context, mode: Int) {
+        try {
+            val updateIntent = Intent(context, ProverbService::class.java).apply {
+                action = ProverbService.ACTION_UPDATE_DISPLAY_MODE
+                putExtra(ProverbService.EXTRA_DISPLAY_MODE, mode)
+            }
+            context.startService(updateIntent)
+            Log.d(TAG, "Updated service display mode to: $mode")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to update service mode", e)
+        }
+    }
+}
