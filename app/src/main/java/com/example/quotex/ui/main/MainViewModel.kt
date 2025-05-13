@@ -6,8 +6,10 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
+import com.example.quotex.data.repository.PromisesRepository
 import com.example.quotex.data.repository.UserPreferencesRepository
 import com.example.quotex.data.repository.ProverbsRepository
+import com.example.quotex.model.Promise
 import com.example.quotex.model.Quote
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.first
@@ -17,8 +19,16 @@ import javax.inject.Inject
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val proverbsRepository: ProverbsRepository,
-    private val userPreferencesRepository: UserPreferencesRepository
-) : ViewModel() {
+    private val userPreferencesRepository: UserPreferencesRepository,
+    // Add to constructor parameters of MainViewModel
+    private val promisesRepository: PromisesRepository,
+
+
+
+    ) : ViewModel() {
+
+    // Add this property to fetch promises
+    val promises: LiveData<List<Promise>> = promisesRepository.getAllPromises().asLiveData()
 
     val proverbsForToday: LiveData<List<Quote>> =
         proverbsRepository.getProverbsForCurrentDay().asLiveData()
@@ -91,6 +101,44 @@ class MainViewModel @Inject constructor(
                 Log.d("MainViewModel", "Refreshed ${quotes.size} quotes")
             } catch (e: Exception) {
                 Log.e("MainViewModel", "Error refreshing quotes: ${e.message}", e)
+            }
+        }
+    }
+
+    // Method to manually refresh promises
+    fun refreshPromises() {
+        viewModelScope.launch {
+            try {
+                Log.d("MainViewModel", "Refreshing promises data")
+                // This will cause the Flow to be re-collected
+                promisesRepository.getAllPromises().first()
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Error refreshing promises: ${e.message}", e)
+            }
+        }
+    }
+
+
+    fun forceInitializePromises() {
+        viewModelScope.launch {
+            try {
+                userPreferencesRepository.setDisplayPromises(true)
+                Log.d("MainViewModel", "Forced promises display to be enabled")
+
+                // Force add a sample promise if none exist
+                val existingPromises = promisesRepository.getAllPromises().first()
+                if (existingPromises.isEmpty()) {
+                    val samplePromise = Promise(
+                        id = System.currentTimeMillis(),
+                        title = "Sample Promise",
+                        verse = "Trust in the Lord with all your heart and lean not on your own understanding",
+                        reference = "Proverbs 3:5"
+                    )
+                    promisesRepository.addPromise(samplePromise)
+                    Log.d("MainViewModel", "Added sample promise")
+                }
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Failed to force initialize promises", e)
             }
         }
     }

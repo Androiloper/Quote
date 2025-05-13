@@ -45,6 +45,7 @@ import com.example.quotex.R
 import com.example.quotex.model.Promise
 import com.example.quotex.ui.components.FuturisticLoadingIndicator
 import com.example.quotex.ui.components.GlassCard
+import com.example.quotex.ui.main.PromiseCard
 import com.example.quotex.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -253,7 +254,6 @@ fun PromisesScreen(
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
                         itemsIndexed(promises) { index, promise ->
-                            // Use animatedVisibilityScope for item animations
                             val visibleState = remember { MutableTransitionState(false) }
 
                             LaunchedEffect(Unit) {
@@ -276,11 +276,10 @@ fun PromisesScreen(
                                 ),
                                 exit = fadeOut() + slideOutVertically()
                             ) {
-                                PromiseItem(
+                                PromiseCard(
                                     promise = promise,
                                     onEditClick = { viewModel.setEditingPromise(promise) },
                                     onDeleteClick = { viewModel.deletePromise(promise) },
-                                    onShareClick = { /* Share promise */ },
                                     modifier = Modifier.padding(vertical = 8.dp)
                                 )
                             }

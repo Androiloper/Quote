@@ -30,6 +30,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Refresh
@@ -39,6 +42,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -68,6 +72,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.quotex.R
+import com.example.quotex.model.Promise
 import com.example.quotex.model.Quote
 import com.example.quotex.ui.components.FuturisticLoadingIndicator
 import com.example.quotex.ui.components.GlassCard
@@ -207,6 +212,19 @@ fun MainScreen(
                         }
                     }
                 )
+            },
+            floatingActionButton = {
+                // Add this FAB
+                FloatingActionButton(
+                    onClick = { onPromisesClick() },  // Navigate to Promises screen on click
+                    containerColor = NebulaPurple,
+                    contentColor = StarWhite
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Add Promise"
+                    )
+                }
             }
         ) { paddingValues ->
             Column(
@@ -348,43 +366,154 @@ fun MainScreen(
                 }
 
                 // Promises Button
-
-                    GlassCard(
+                GlassCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 16.dp)
+                ) {
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 24.dp, vertical = 16.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(
-                                    brush = Brush.horizontalGradient(
-                                        colors = listOf(
-                                            NeonPink.copy(alpha = 0.2f),
-                                            NeonPink.copy(alpha = 0.4f),
-                                            NeonPink.copy(alpha = 0.2f)
-                                        )
+                            .background(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(
+                                        NeonPink.copy(alpha = 0.2f),
+                                        NeonPink.copy(alpha = 0.4f),
+                                        NeonPink.copy(alpha = 0.2f)
                                     )
                                 )
-                                .padding(16.dp)
-                                .clickable {
-                                    // Add logging
-                                    Log.d("MainScreen", "Promises button clicked, navigating with displayPromises=$displayPromises")
+                            )
+                            .padding(16.dp)
+                            .clickable {
+                                // Add logging
+                                Log.d("MainScreen", "Promises button clicked, navigating with displayPromises=$displayPromises")
+                                onPromisesClick()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "VIEW PROMISES",
+                            style = MaterialTheme.typography.titleLarge,
+                            textAlign = TextAlign.Center,
+                            fontWeight = FontWeight.Bold,
+                            color = StarWhite
+                        )
+                    }
+                }
+
+                // Promises Section - Add this after the "Promises Button" section
+                SectionHeader(
+                    title = "MY PROMISES",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 16.dp)
+                )
+
+                GlassCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(350.dp)
+                        .padding(horizontal = 24.dp, vertical = 8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val promises by viewModel.promises.observeAsState(emptyList())
+
+                        if (promises.isEmpty()) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                FuturisticLoadingIndicator(
+                                    modifier = Modifier.padding(bottom = 16.dp)
+                                )
+
+                                Text(
+                                    text = "No promises saved yet",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = StarWhite,
+                                    textAlign = TextAlign.Center
+                                )
+
+                                Button(
+                                    onClick = onPromisesClick,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = NebulaPurple
+                                    ),
+                                    modifier = Modifier.padding(top = 16.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("ADD PROMISES")
+                                }
+                            }
+                        } else {
+                            Log.d("MainScreen", "Showing ${promises.size} promises in pager")
+                            PromisesPager(
+                                promises = promises,
+                                onEditPromise = { /* Navigate to edit screen */
+                                    Log.d("MainScreen", "Edit promise requested: ${it.title}")
                                     onPromisesClick()
                                 },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "VIEW PROMISES",
-                                style = MaterialTheme.typography.titleLarge,
-                                textAlign = TextAlign.Center,
-                                fontWeight = FontWeight.Bold,
-                                color = StarWhite
+                                onDeletePromise = { /* Handle delete action */
+                                    Log.d("MainScreen", "Delete promise requested: ${it.title}")
+                                    // Handle delete through your viewModel
+                                }
                             )
                         }
                     }
+                }
 
+                // Debug status display - add this just before "App Info"
+                GlassCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 8.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            text = "DEBUG STATUS",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = NeonPink
+                        )
 
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "Promises Enabled: ${if (displayPromises) "YES" else "NO"}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (displayPromises) ElectricGreen else NeonPink
+                        )
+
+                        Text(
+                            text = "Promises Count: ${viewModel.promises.observeAsState(emptyList()).value.size}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = StarWhite
+                        )
+
+                        Button(
+                            onClick = {
+                                viewModel.forceInitializePromises()
+                                onPromisesClick()
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = ElectricGreen
+                            ),
+                            modifier = Modifier.padding(top = 8.dp)
+                        ) {
+                            Text("FORCE INITIALIZE PROMISES")
+                        }
+                    }
+                }
                 // App Info
                 Text(
                     text = "QuoteX v1.0 | Daily Cosmic Wisdom",
@@ -441,6 +570,189 @@ fun QuoteCard(
                     )
                     .padding(horizontal = 12.dp, vertical = 4.dp)
             )
+        }
+    }
+}
+
+// PromiseCard implementation to display promises - moved to top level
+@Composable
+fun PromiseCard(
+    promise: Promise,
+    modifier: Modifier = Modifier,
+    onEditClick: () -> Unit = {},
+    onDeleteClick: () -> Unit = {}
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = GlassSurface.copy(alpha = 0.8f),
+            contentColor = StarWhite
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            // Title section
+            Text(
+                text = promise.title,
+                style = MaterialTheme.typography.titleLarge,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = 12.dp),
+                color = ElectricGreen
+            )
+
+            // Verse section
+            Text(
+                text = "\"${promise.verse}\"",
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = 16.dp),
+                color = StarWhite
+            )
+
+            // Reference and actions section
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Reference
+                Text(
+                    text = promise.reference,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontStyle = FontStyle.Italic,
+                    color = CyberBlue,
+                    modifier = Modifier
+                        .background(
+                            color = GlassSurfaceDark.copy(alpha = 0.5f),
+                            shape = MaterialTheme.shapes.small
+                        )
+                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                )
+
+                // Action buttons
+                Row {
+                    IconButton(
+                        onClick = onEditClick,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit",
+                            tint = StarWhite.copy(alpha = 0.7f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    IconButton(
+                        onClick = onDeleteClick,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            tint = NeonPink.copy(alpha = 0.7f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// PromisesPager implementation - moved to top level
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun PromisesPager(
+    promises: List<Promise>,
+    modifier: Modifier = Modifier,
+    initialPage: Int = 0,
+    onEditPromise: (Promise) -> Unit = {},
+    onDeletePromise: (Promise) -> Unit = {}
+) {
+    if (promises.isEmpty()) {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                FuturisticLoadingIndicator(
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                Text(
+                    text = "No promises saved yet",
+                    textAlign = TextAlign.Center,
+                    color = StarWhite
+                )
+            }
+        }
+        return
+    }
+
+    val pagerState = rememberPagerState(initialPage = initialPage) { promises.size }
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = modifier
+                .fillMaxWidth()
+                .weight(1f)
+        ) { page ->
+            if (page < promises.size) {
+                PromiseCard(
+                    promise = promises[page],
+                    onEditClick = { onEditPromise(promises[page]) },
+                    onDeleteClick = { onDeletePromise(promises[page]) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No more promises available",
+                        textAlign = TextAlign.Center,
+                        color = StarWhite
+                    )
+                }
+            }
+        }
+
+        // Add page indicator dots
+        if (promises.size > 1) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                repeat(promises.size) { iteration ->
+                    val color = if (pagerState.currentPage == iteration) ElectricGreen else StarWhite.copy(alpha = 0.3f)
+                    Box(
+                        modifier = Modifier
+                            .padding(2.dp)
+                            .clip(CircleShape)
+                            .background(color)
+                            .size(if (pagerState.currentPage == iteration) 10.dp else 8.dp)
+                    )
+                }
+            }
         }
     }
 }

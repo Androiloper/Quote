@@ -26,16 +26,37 @@ object DatabaseModule {
             QuoteXDatabase::class.java,
             "quotex-database"
         )
-            .fallbackToDestructiveMigration() // Add this for development
+            .fallbackToDestructiveMigration() // Recreate database if migration isn't provided
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)
-                    Log.d("DatabaseModule", "Database created")
+                    Log.d("DatabaseModule", "Database created successfully")
+
+                    // Add initial data directly with SQL
+                    try {
+                        val initialPromiseSql = "INSERT INTO promises (id, title, verse, reference) " +
+                                "VALUES (1, 'Initial Promise', 'This is a promise created on database creation', 'Genesis 1:1')"
+                        db.execSQL(initialPromiseSql)
+                        Log.d("DatabaseModule", "Added initial promise via SQL")
+                    } catch (e: Exception) {
+                        Log.e("DatabaseModule", "Failed to insert initial promise: ${e.message}", e)
+                    }
                 }
 
                 override fun onOpen(db: SupportSQLiteDatabase) {
                     super.onOpen(db)
-                    Log.d("DatabaseModule", "Database opened")
+                    Log.d("DatabaseModule", "Database opened successfully")
+
+                    // Check if database has records
+                    try {
+                        val cursor = db.query("SELECT COUNT(*) FROM promises")
+                        cursor.moveToFirst()
+                        val count = cursor.getInt(0)
+                        cursor.close()
+                        Log.d("DatabaseModule", "Database has $count promises upon opening")
+                    } catch (e: Exception) {
+                        Log.e("DatabaseModule", "Error checking promise count: ${e.message}", e)
+                    }
                 }
             })
             .build()

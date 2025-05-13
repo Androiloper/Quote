@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
+import timber.log.Timber
 import javax.inject.Inject
 
 @HiltAndroidApp
@@ -14,9 +15,13 @@ class QuoteXApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        // Logging setup - using standard Log for now
-        android.util.Log.d("QuoteXApplication", "Application initialized")
+        // Logging setup - using Timber for better logging
+        if (BuildConfig.DEBUG) {
+            Timber.plant(Timber.DebugTree())
+        }
+        Timber.d("Application initialized")
     }
+
 
     // ONLY implement the property, not the method
     override val workManagerConfiguration: Configuration

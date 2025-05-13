@@ -13,7 +13,7 @@ interface PromiseDao {
     suspend fun getPromiseById(id: Long): PromiseEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertPromise(promise: PromiseEntity)
+    suspend fun insertPromise(promise: PromiseEntity): Long
 
     @Update
     suspend fun updatePromise(promise: PromiseEntity)
@@ -23,4 +23,8 @@ interface PromiseDao {
 
     @Query("SELECT * FROM promises WHERE title LIKE '%' || :query || '%' OR verse LIKE '%' || :query || '%' OR reference LIKE '%' || :query || '%'")
     fun searchPromises(query: String): Flow<List<PromiseEntity>>
+
+    // Add a utility function to count promises
+    @Query("SELECT COUNT(*) FROM promises")
+    suspend fun countPromises(): Int
 }

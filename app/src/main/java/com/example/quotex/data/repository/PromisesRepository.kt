@@ -14,6 +14,10 @@ import javax.inject.Singleton
 class PromisesRepository @Inject constructor(
     private val promiseDao: PromiseDao
 ) {
+    init {
+        Log.d("PromisesRepository", "Repository initialized with DAO: ${promiseDao.javaClass.simpleName}")
+    }
+
     fun getAllPromises(): Flow<List<Promise>> =
         promiseDao.getAllPromises().map { entities ->
             entities.map { it.toPromise() }
@@ -24,8 +28,9 @@ class PromisesRepository @Inject constructor(
 
     suspend fun addPromise(promise: Promise) {
         try {
-            promiseDao.insertPromise(PromiseEntity.fromPromise(promise))
-            Log.d("PromisesRepository", "Promise added: ${promise.title}")
+            val entity = PromiseEntity.fromPromise(promise)
+            val insertedId = promiseDao.insertPromise(entity)
+            Log.d("PromisesRepository", "Promise added with ID: $insertedId, title: ${promise.title}")
         } catch (e: Exception) {
             Log.e("PromisesRepository", "Error adding promise: ${e.message}", e)
             throw e
@@ -59,4 +64,14 @@ class PromisesRepository @Inject constructor(
             Log.e("PromisesRepository", "Error searching promises: ${e.message}", e)
             emit(emptyList())
         }
+
+    // Add helper function to check database state
+    suspend fun getDatabaseState(): String {
+        return try {
+            val count = promiseDao.countPromises()
+            "Database contains $count promises"
+        } catch (e: Exception) {
+            "Database error: ${e.message}"
+        }
+    }
 }
