@@ -181,13 +181,7 @@ fun SettingsScreen(
                         icon = Icons.Rounded.Notifications
                     )
 
-                    // Display Promises Setting
-                    FuturisticToggle(
-                        text = "Display Promises",
-                        isChecked = displayPromises,
-                        onCheckedChange = { viewModel.toggleDisplayPromises() },
-                        icon = Icons.Rounded.Favorite
-                    )
+
 
                     // Theme Setting (Demo only)
                     var isDarkTheme by remember { mutableStateOf(true) }

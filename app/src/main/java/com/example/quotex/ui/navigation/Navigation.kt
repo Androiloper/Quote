@@ -1,5 +1,6 @@
 package com.example.quotex.ui.navigation
 
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -48,6 +49,7 @@ fun AppNavigation(
                     navController.navigate(Screen.Settings.route)
                 },
                 onPromisesClick = {
+                    Log.d("Navigation", "Navigating to Promises screen")
                     navController.navigate(Screen.Promises.route)
                 },
                 showSnackbar = { _ ->

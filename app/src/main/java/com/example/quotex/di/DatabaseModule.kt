@@ -1,7 +1,10 @@
 package com.example.quotex.di
 
 import android.content.Context
+import android.util.Log
 import androidx.room.Room
+import androidx.room.RoomDatabase
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.quotex.data.db.QuoteXDatabase
 import com.example.quotex.data.db.dao.PromiseDao
 import dagger.Module
@@ -22,7 +25,20 @@ object DatabaseModule {
             context,
             QuoteXDatabase::class.java,
             "quotex-database"
-        ).build()
+        )
+            .fallbackToDestructiveMigration() // Add this for development
+            .addCallback(object : RoomDatabase.Callback() {
+                override fun onCreate(db: SupportSQLiteDatabase) {
+                    super.onCreate(db)
+                    Log.d("DatabaseModule", "Database created")
+                }
+
+                override fun onOpen(db: SupportSQLiteDatabase) {
+                    super.onOpen(db)
+                    Log.d("DatabaseModule", "Database opened")
+                }
+            })
+            .build()
     }
 
     @Provides

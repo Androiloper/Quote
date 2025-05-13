@@ -1,30 +1,86 @@
-// ui/main/MainScreen.kt
 package com.example.quotex.ui.main
 
-import androidx.compose.animation.*
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
+import android.util.Log
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.*
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.quotex.R
-import com.example.quotex.ui.components.*
-import com.example.quotex.ui.theme.*
+import com.example.quotex.model.Quote
+import com.example.quotex.ui.components.FuturisticLoadingIndicator
+import com.example.quotex.ui.components.GlassCard
+import com.example.quotex.ui.components.SectionHeader
+import com.example.quotex.ui.theme.CosmicBlack
+import com.example.quotex.ui.theme.CyberBlue
+import com.example.quotex.ui.theme.DeepSpace
+import com.example.quotex.ui.theme.ElectricGreen
+import com.example.quotex.ui.theme.GlassSurface
+import com.example.quotex.ui.theme.GlassSurfaceDark
+import com.example.quotex.ui.theme.NebulaPurple
+import com.example.quotex.ui.theme.NeonPink
+import com.example.quotex.ui.theme.StarWhite
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -36,16 +92,73 @@ fun MainScreen(
     showSnackbar: (String) -> Unit
 ) {
     val proverbs by viewModel.proverbsForToday.observeAsState(emptyList())
+    val displayMode by viewModel.displayMode.observeAsState(0)
+    val displayPromises by viewModel.displayPromises.observeAsState(false)
     val scrollState = rememberScrollState()
 
-    // Background stars effect
+    // Add debug logging
+    LaunchedEffect(Unit) {
+        Log.d("MainScreen", "Screen composing: Proverbs count = ${proverbs.size}")
+    }
+
+    // Background stars for cosmic feel
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(DeepSpace)
             .drawBehind {
-                // Create a gradient background with stars - same as before
-                // ...
+                // Create a gradient background with stars
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            CosmicBlack,
+                            DeepSpace
+                        )
+                    )
+                )
+
+                // Small cosmic particles
+                for (i in 0..100) {
+                    val x = (Math.random() * size.width).toFloat()
+                    val y = (Math.random() * size.height).toFloat()
+                    val radius = (Math.random() * 2f + 0.5f).toFloat()
+                    val alpha = (Math.random() * 0.8f + 0.2f).toFloat()
+
+                    drawCircle(
+                        color = StarWhite.copy(alpha = alpha),
+                        radius = radius,
+                        center = Offset(x, y)
+                    )
+                }
+
+                // Larger stars
+                for (i in 0..15) {
+                    val x = (Math.random() * size.width).toFloat()
+                    val y = (Math.random() * size.height).toFloat()
+                    val radius = (Math.random() * 3f + 1.5f).toFloat()
+
+                    drawCircle(
+                        color = StarWhite,
+                        radius = radius,
+                        center = Offset(x, y)
+                    )
+                }
+
+                // A few colored stars
+                for (i in 0..5) {
+                    val x = (Math.random() * size.width).toFloat()
+                    val y = (Math.random() * size.height).toFloat()
+                    val radius = (Math.random() * 3f + 1f).toFloat()
+
+                    val colors = listOf(CyberBlue, NeonPink, ElectricGreen, NebulaPurple)
+                    val color = colors[(Math.random() * colors.size).toInt()]
+
+                    drawCircle(
+                        color = color.copy(alpha = 0.7f),
+                        radius = radius,
+                        center = Offset(x, y)
+                    )
+                }
             }
     ) {
         // Nebula effect in the background
@@ -78,7 +191,6 @@ fun MainScreen(
                         titleContentColor = StarWhite
                     ),
                     actions = {
-                        // Settings button now navigates to the dedicated settings screen
                         IconButton(onClick = onSettingsClick) {
                             Icon(
                                 imageVector = Icons.Rounded.Settings,
@@ -104,35 +216,65 @@ fun MainScreen(
                     .verticalScroll(scrollState),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Quote Display takes center stage
+                // Quote Display Section
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(350.dp) // Fixed height to ensure visibility
                         .padding(horizontal = 16.dp, vertical = 24.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     if (proverbs.isEmpty()) {
-                        FuturisticLoadingIndicator(
-                            modifier = Modifier.padding(24.dp)
-                        )
-                    } else {
-                        // Quote Pager - enlarged for better visibility
-                        val pagerState = rememberPagerState(pageCount = { proverbs.size })
-
+                        // Show loading
                         Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
+                            FuturisticLoadingIndicator(
+                                modifier = Modifier.padding(24.dp)
+                            )
+                            Text(
+                                text = "Loading today's wisdom...",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = StarWhite,
+                                modifier = Modifier.padding(top = 16.dp)
+                            )
+
+                            // Debug call to explicitly load quotes - remove in production
+                            LaunchedEffect(Unit) {
+                                Log.d("MainScreen", "Triggering quote refresh")
+                                viewModel.refreshQuotes()
+                            }
+                        }
+                    } else {
+                        // Quote Pager
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            val pagerState = rememberPagerState(initialPage = 0) { proverbs.size }
+
                             HorizontalPager(
                                 state = pagerState,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(280.dp) // Explicit height
                             ) { page ->
-                                FuturisticQuoteCard(
-                                    quote = proverbs[page],
-                                    modifier = Modifier.fillMaxWidth()
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    // Use basic card for reliability
+                                    QuoteCard(
+                                        quote = proverbs[page],
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
                             }
 
-                            // Add pager indicators
+                            // Pager indicators
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -188,7 +330,7 @@ fun MainScreen(
                         )
 
                         Button(
-                            onClick = { /* Refresh today's quote */ },
+                            onClick = { viewModel.refreshQuotes() },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = NebulaPurple
                             ),
@@ -206,36 +348,42 @@ fun MainScreen(
                 }
 
                 // Promises Button
-                GlassCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 16.dp)
-                ) {
-                    Box(
+
+                    GlassCard(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(
-                                brush = Brush.horizontalGradient(
-                                    colors = listOf(
-                                        NeonPink.copy(alpha = 0.2f),
-                                        NeonPink.copy(alpha = 0.4f),
-                                        NeonPink.copy(alpha = 0.2f)
+                            .padding(horizontal = 24.dp, vertical = 16.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(
+                                            NeonPink.copy(alpha = 0.2f),
+                                            NeonPink.copy(alpha = 0.4f),
+                                            NeonPink.copy(alpha = 0.2f)
+                                        )
                                     )
                                 )
+                                .padding(16.dp)
+                                .clickable {
+                                    // Add logging
+                                    Log.d("MainScreen", "Promises button clicked, navigating with displayPromises=$displayPromises")
+                                    onPromisesClick()
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "VIEW PROMISES",
+                                style = MaterialTheme.typography.titleLarge,
+                                textAlign = TextAlign.Center,
+                                fontWeight = FontWeight.Bold,
+                                color = StarWhite
                             )
-                            .padding(16.dp)
-                            .clickable { onPromisesClick() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "VIEW PROMISES",
-                            style = MaterialTheme.typography.titleLarge,
-                            textAlign = TextAlign.Center,
-                            fontWeight = FontWeight.Bold,
-                            color = StarWhite
-                        )
+                        }
                     }
-                }
+
 
                 // App Info
                 Text(
@@ -245,6 +393,54 @@ fun MainScreen(
                     modifier = Modifier.padding(vertical = 24.dp)
                 )
             }
+        }
+    }
+}
+
+// Simple QuoteCard implementation that guarantees visibility
+@Composable
+fun QuoteCard(
+    quote: Quote,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = GlassSurface.copy(alpha = 0.8f),
+            contentColor = StarWhite
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "\"${quote.text}\"",
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = 16.dp),
+                color = StarWhite
+            )
+
+            Text(
+                text = quote.reference,
+                style = MaterialTheme.typography.bodyMedium,
+                fontStyle = FontStyle.Italic,
+                color = CyberBlue,
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .background(
+                        color = GlassSurfaceDark.copy(alpha = 0.5f),
+                        shape = MaterialTheme.shapes.small
+                    )
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+            )
         }
     }
 }

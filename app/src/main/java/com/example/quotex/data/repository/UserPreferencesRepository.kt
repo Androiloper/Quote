@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -25,9 +26,7 @@ class UserPreferencesRepository @Inject constructor(
         preferences[DISPLAY_MODE_KEY] ?: 0
     }
 
-    val displayPromises: Flow<Boolean> = dataStore.data.map { preferences ->
-        preferences[DISPLAY_PROMISES_KEY] ?: false
-    }
+    val displayPromises: Flow<Boolean> = flow { emit(true) }
 
     suspend fun setDisplayMode(mode: Int) {
         dataStore.edit { preferences ->
