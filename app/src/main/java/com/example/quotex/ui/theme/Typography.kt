@@ -19,7 +19,7 @@ val EudoxusSans = FontFamily(
     Font(R.font.eudoxus_sans_bold, FontWeight.Bold)
 )
 
-val TypographyRe = Typography(
+val Typography = Typography(
     // Large display text for quotes
     displayLarge = TextStyle(
         fontFamily = EudoxusSans,

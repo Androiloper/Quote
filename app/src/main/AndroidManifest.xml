@@ -21,7 +21,7 @@
         android:theme="@style/Theme.QuoteX">
 
         <!-- Main Activity -->
-        <activity android:name=".ui.main.MainActivity"
+        <activity android:name="com.example.quotex.ui.main.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

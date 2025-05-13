@@ -46,4 +46,6 @@ class MainViewModel @Inject constructor(
             userPreferencesRepository.setDisplayMode(mode)
         }
     }
+
+
 }

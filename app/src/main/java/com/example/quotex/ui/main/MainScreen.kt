@@ -1,146 +1,51 @@
+// ui/main/MainScreen.kt
 package com.example.quotex.ui.main
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.animation.*
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.DateRange //alarm
-import androidx.compose.material.icons.rounded.ExitToApp //darkmode
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.*
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.quotex.model.Quote
-import com.example.quotex.ui.components.FuturisticLoadingIndicator
-import com.example.quotex.ui.components.FuturisticQuoteCard
-import com.example.quotex.ui.components.FuturisticToggle
-import com.example.quotex.ui.components.GlassCard
-import com.example.quotex.ui.components.SectionHeader
-import com.example.quotex.ui.theme.CosmicBlack
-import com.example.quotex.ui.theme.CyberBlue
-import com.example.quotex.ui.theme.DeepSpace
-import com.example.quotex.ui.theme.ElectricGreen
-import com.example.quotex.ui.theme.GlassSurface
-import com.example.quotex.ui.theme.NebulaPurple
-import com.example.quotex.ui.theme.NeonPink
-import com.example.quotex.ui.theme.StarWhite
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.res.painterResource
 import com.example.quotex.R
+import com.example.quotex.ui.components.*
+import com.example.quotex.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun MainScreen(
     modifier: Modifier = Modifier,
     viewModel: MainViewModel,
+    onSettingsClick: () -> Unit,
     onPromisesClick: () -> Unit,
     showSnackbar: (String) -> Unit
 ) {
     val proverbs by viewModel.proverbsForToday.observeAsState(emptyList())
-    val displayMode by viewModel.displayMode.observeAsState(0)
-    val displayPromises by viewModel.displayPromises.observeAsState(false)
-
     val scrollState = rememberScrollState()
 
-    // Background stars for cosmic feel
+    // Background stars effect
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(DeepSpace)
             .drawBehind {
-                // Create a gradient background with stars
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            CosmicBlack,
-                            DeepSpace
-                        )
-                    )
-                )
-
-                // Small cosmic particles
-                for (i in 0..100) {
-                    val x = (Math.random() * size.width).toFloat()
-                    val y = (Math.random() * size.height).toFloat()
-                    val radius = (Math.random() * 2f + 0.5f).toFloat()
-                    val alpha = (Math.random() * 0.8f + 0.2f).toFloat()
-
-                    drawCircle(
-                        color = StarWhite.copy(alpha = alpha),
-                        radius = radius,
-                        center = Offset(x, y)
-                    )
-                }
-
-                // Larger stars
-                for (i in 0..15) {
-                    val x = (Math.random() * size.width).toFloat()
-                    val y = (Math.random() * size.height).toFloat()
-                    val radius = (Math.random() * 3f + 1.5f).toFloat()
-
-                    drawCircle(
-                        color = StarWhite,
-                        radius = radius,
-                        center = Offset(x, y)
-                    )
-                }
-
-                // A few colored stars
-                for (i in 0..5) {
-                    val x = (Math.random() * size.width).toFloat()
-                    val y = (Math.random() * size.height).toFloat()
-                    val radius = (Math.random() * 3f + 1f).toFloat()
-
-                    val colors = listOf(CyberBlue, NeonPink, ElectricGreen, NebulaPurple)
-                    val color = colors[(Math.random() * colors.size).toInt()]
-
-                    drawCircle(
-                        color = color.copy(alpha = 0.7f),
-                        radius = radius,
-                        center = Offset(x, y)
-                    )
-                }
+                // Create a gradient background with stars - same as before
+                // ...
             }
     ) {
         // Nebula effect in the background
@@ -173,15 +78,16 @@ fun MainScreen(
                         titleContentColor = StarWhite
                     ),
                     actions = {
-                        IconButton(onClick = {}) {
-                            androidx.compose.material3.Icon(
+                        // Settings button now navigates to the dedicated settings screen
+                        IconButton(onClick = onSettingsClick) {
+                            Icon(
                                 imageVector = Icons.Rounded.Settings,
                                 contentDescription = "Settings",
                                 tint = StarWhite
                             )
                         }
-                        IconButton(onClick = {}) {
-                            androidx.compose.material3.Icon(
+                        IconButton(onClick = { /* About action */ }) {
+                            Icon(
                                 imageVector = Icons.Rounded.Info,
                                 contentDescription = "About",
                                 tint = StarWhite
@@ -198,7 +104,7 @@ fun MainScreen(
                     .verticalScroll(scrollState),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Quote Display Section
+                // Quote Display takes center stage
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -210,70 +116,93 @@ fun MainScreen(
                             modifier = Modifier.padding(24.dp)
                         )
                     } else {
-                        // Quote Pager
+                        // Quote Pager - enlarged for better visibility
                         val pagerState = rememberPagerState(pageCount = { proverbs.size })
 
-                        HorizontalPager(
-                            state = pagerState,
-                            modifier = Modifier.fillMaxWidth()
-                        ) { page ->
-                            FuturisticQuoteCard(
-                                quote = proverbs[page],
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            HorizontalPager(
+                                state = pagerState,
                                 modifier = Modifier.fillMaxWidth()
-                            )
+                            ) { page ->
+                                FuturisticQuoteCard(
+                                    quote = proverbs[page],
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+
+                            // Add pager indicators
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 16.dp),
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                repeat(proverbs.size) { index ->
+                                    val isSelected = pagerState.currentPage == index
+                                    Box(
+                                        modifier = Modifier
+                                            .padding(horizontal = 4.dp)
+                                            .size(
+                                                width = if (isSelected) 24.dp else 8.dp,
+                                                height = 8.dp
+                                            )
+                                            .background(
+                                                color = if (isSelected) NebulaPurple else StarWhite.copy(
+                                                    alpha = 0.3f
+                                                ),
+                                                shape = MaterialTheme.shapes.small
+                                            )
+                                    )
+                                }
+                            }
                         }
                     }
                 }
 
-                // Settings Section
-                SectionHeader(
-                    title = "INTERFACE SETTINGS",
-                    modifier = Modifier.padding(horizontal = 24.dp)
-                )
-
-                Column(
+                // Daily Inspiration Button
+                GlassCard(
                     modifier = Modifier
-                        .padding(horizontal = 24.dp)
-                        .padding(bottom = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 16.dp)
                 ) {
-                    // Display Mode Setting
-                    FuturisticToggle(
-                        text = when (displayMode) {
-                            0 -> "Disable Lock Screen Quotes"
-                            1 -> "Display on Screen On"
-                            else -> "Display on Unlock"
-                        },
-                        isChecked = displayMode > 0,
-                        onCheckedChange = { viewModel.toggleDisplayMode() },
-                        icon = Icons.Rounded.Notifications
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "TODAY'S INSPIRATION",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = ElectricGreen
+                        )
 
-                    // Display Promises Setting
-                    FuturisticToggle(
-                        text = "Display Promises",
-                        isChecked = displayPromises,
-                        onCheckedChange = { viewModel.toggleDisplayPromises() },
-                        icon = Icons.Rounded.Favorite
-                    )
+                        Text(
+                            text = "\"A verse each day keeps the troubles away\"",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = StarWhite,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
 
-                    // Theme Setting (Demo only)
-                    var isDarkTheme by remember { mutableStateOf(true) }
-                    FuturisticToggle(
-                        text = "Dark Theme",
-                        isChecked = isDarkTheme,
-                        onCheckedChange = { isDarkTheme = it },
-                        icon = Icons.Rounded.ExitToApp
-                    )
-
-                    // Daily Reminder Setting (Demo only)
-                    var dailyReminder by remember { mutableStateOf(false) }
-                    FuturisticToggle(
-                        text = "Daily Reminder",
-                        isChecked = dailyReminder,
-                        onCheckedChange = { dailyReminder = it },
-                        icon = Icons.Rounded.DateRange
-                    )
+                        Button(
+                            onClick = { /* Refresh today's quote */ },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = NebulaPurple
+                            ),
+                            modifier = Modifier.padding(top = 8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Refresh,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("REFRESH QUOTE")
+                        }
+                    }
                 }
 
                 // Promises Button

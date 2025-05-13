@@ -22,10 +22,13 @@ import androidx.compose.ui.graphics.Color
 import com.example.quotex.R
 
 // Primary colors
-@SuppressLint("ResourceAsColor")
-val PrimaryLight = Color(R.color.primary_light)
-@SuppressLint("ResourceAsColor")
-val PrimaryDark = Color(R.color.primary_dark)
+//@SuppressLint("ResourceAsColor")
+//val PrimaryLight = Color(R.color.primary_light)
+//@SuppressLint("ResourceAsColor")
+//val PrimaryDark = Color(R.color.primary_dark)
+
+val PrimaryLight = Color(0xFF6200EE)  // Instead of Color(R.color.primary_light)
+val PrimaryDark = Color(0xFFBB86FC)   // Instead of Color(R.color.primary_dark)
 
 // Background colors
 @SuppressLint("ResourceAsColor")
