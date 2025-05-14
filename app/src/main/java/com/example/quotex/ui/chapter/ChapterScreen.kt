@@ -201,13 +201,13 @@ fun ChapterScreen(
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(vertical = 8.dp)
+                        contentPadding = PaddingValues(vertical = 2.dp)
                     ) {
                         items(verses) { verse ->
                             VerseItem(
                                 verse = verse,
                                 chapterNumber = chapterNumber,
-                                modifier = Modifier.padding(vertical = 4.dp)
+                                modifier = Modifier.padding(vertical = 1.dp)
                             )
                         }
                     }
@@ -269,14 +269,7 @@ fun VerseItem(
                     color = StarWhite
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
 
-                Text(
-                    text = "Proverbs $chapterNumber:${verse.verse}",
-                    fontSize = 12.sp,
-                    color = CyberBlue,
-                    modifier = Modifier.align(Alignment.End)
-                )
             }
         }
     }
