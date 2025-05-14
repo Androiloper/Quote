@@ -242,7 +242,7 @@ fun VerseItem(
             // Verse number in circle
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
                     .background(NebulaPurple)
                     .padding(4.dp),
