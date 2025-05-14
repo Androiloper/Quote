@@ -4,9 +4,13 @@ import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.example.quotex.ui.chapter.ChapterScreen
+import com.example.quotex.ui.chapter.ChapterViewModel
 import com.example.quotex.ui.main.MainScreen
 import com.example.quotex.ui.main.MainViewModel
 import com.example.quotex.ui.promises.PromisesScreen
@@ -28,6 +32,14 @@ sealed interface Screen {
     data object Promises : Screen {
         override val route = "promises"
     }
+
+    data object Chapter : Screen {
+        override val route = "chapter/{chapterNumber}"
+
+        fun createRoute(chapterNumber: Int): String {
+            return "chapter/$chapterNumber"
+        }
+    }
 }
 
 @Composable
@@ -37,6 +49,9 @@ fun AppNavigation(
 ) {
     // Create a separate PromisesViewModel instance for the Promises screen
     val promisesViewModel: PromisesViewModel = viewModel()
+
+    // Create ChapterViewModel for the Chapter screen
+    val chapterViewModel: ChapterViewModel = viewModel()
 
     NavHost(
         navController = navController,
@@ -52,8 +67,13 @@ fun AppNavigation(
                     Log.d("Navigation", "Navigating to Promises screen")
                     navController.navigate(Screen.Promises.route)
                 },
-                showSnackbar = { _ ->
-                    // Implementation if needed, or remove if not used
+                onQuoteClick = { chapterNumber ->
+                    Log.d("Navigation", "Navigating to Chapter screen for chapter $chapterNumber")
+                    navController.navigate(Screen.Chapter.createRoute(chapterNumber))
+                },
+                showSnackbar = { message ->
+                    Log.d("Navigation", "Showing snackbar: $message")
+                    // Implementation if needed
                 }
             )
         }
@@ -71,6 +91,24 @@ fun AppNavigation(
             // Use the proper PromisesViewModel here instead of MainViewModel
             PromisesScreen(
                 viewModel = promisesViewModel,
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(
+            route = Screen.Chapter.route,
+            arguments = listOf(
+                navArgument("chapterNumber") {
+                    type = NavType.IntType
+                }
+            )
+        ) { backStackEntry ->
+            val chapterNumber = backStackEntry.arguments?.getInt("chapterNumber") ?: 1
+            ChapterScreen(
+                viewModel = chapterViewModel,
+                chapterNumber = chapterNumber,
                 onBackClick = {
                     navController.popBackStack()
                 }

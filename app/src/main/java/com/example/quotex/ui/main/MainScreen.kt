@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -55,7 +56,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -74,6 +77,7 @@ import androidx.compose.ui.unit.dp
 import com.example.quotex.R
 import com.example.quotex.model.Promise
 import com.example.quotex.model.Quote
+import com.example.quotex.ui.components.ClickableQuotePager
 import com.example.quotex.ui.components.FuturisticLoadingIndicator
 import com.example.quotex.ui.components.GlassCard
 import com.example.quotex.ui.components.SectionHeader
@@ -86,6 +90,7 @@ import com.example.quotex.ui.theme.GlassSurfaceDark
 import com.example.quotex.ui.theme.NebulaPurple
 import com.example.quotex.ui.theme.NeonPink
 import com.example.quotex.ui.theme.StarWhite
+import com.example.quotex.util.ProverbsUtil
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -94,6 +99,7 @@ fun MainScreen(
     viewModel: MainViewModel,
     onSettingsClick: () -> Unit,
     onPromisesClick: () -> Unit,
+    onQuoteClick: (Int) -> Unit,
     showSnackbar: (String) -> Unit
 ) {
     val proverbs by viewModel.proverbsForToday.observeAsState(emptyList())
@@ -265,59 +271,15 @@ fun MainScreen(
                             }
                         }
                     } else {
-                        // Quote Pager
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            val pagerState = rememberPagerState(initialPage = 0) { proverbs.size }
-
-                            HorizontalPager(
-                                state = pagerState,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(280.dp) // Explicit height
-                            ) { page ->
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(horizontal = 8.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    // Use basic card for reliability
-                                    QuoteCard(
-                                        quote = proverbs[page],
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
-                            }
-
-                            // Pager indicators
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 16.dp),
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                repeat(proverbs.size) { index ->
-                                    val isSelected = pagerState.currentPage == index
-                                    Box(
-                                        modifier = Modifier
-                                            .padding(horizontal = 4.dp)
-                                            .size(
-                                                width = if (isSelected) 24.dp else 8.dp,
-                                                height = 8.dp
-                                            )
-                                            .background(
-                                                color = if (isSelected) NebulaPurple else StarWhite.copy(
-                                                    alpha = 0.3f
-                                                ),
-                                                shape = MaterialTheme.shapes.small
-                                            )
-                                    )
-                                }
-                            }
-                        }
+                        // Quote Pager - UPDATED TO USE CLICKABLE QUOTE PAGER
+                        ClickableQuotePager(
+                            quotes = proverbs,
+                            onQuoteClick = { chapterNumber ->
+                                Log.d("MainScreen", "Quote clicked for chapter: $chapterNumber")
+                                onQuoteClick(chapterNumber)
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
                 }
 
@@ -361,6 +323,64 @@ fun MainScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("REFRESH QUOTE")
+                        }
+                    }
+                }
+
+                // Browse Chapters Card - NEW ADDITION
+                GlassCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "BROWSE CHAPTERS",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = NeonPink
+                        )
+
+                        Text(
+                            text = "Explore all verses by chapter",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = StarWhite,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+
+                        // Chapter buttons - first row, chapters 1-5
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            for (chapter in 1..5) {
+                                ChapterButton(
+                                    chapter = chapter,
+                                    onClick = { onQuoteClick(chapter) }
+                                )
+                            }
+                        }
+
+                        // Chapter buttons - second row, chapters 6-10
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            for (chapter in 6..10) {
+                                ChapterButton(
+                                    chapter = chapter,
+                                    onClick = { onQuoteClick(chapter) }
+                                )
+                            }
                         }
                     }
                 }
@@ -469,51 +489,6 @@ fun MainScreen(
                     }
                 }
 
-                // Debug status display - add this just before "App Info"
-                GlassCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 8.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                    ) {
-                        Text(
-                            text = "DEBUG STATUS",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = NeonPink
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text(
-                            text = "Promises Enabled: ${if (displayPromises) "YES" else "NO"}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (displayPromises) ElectricGreen else NeonPink
-                        )
-
-                        Text(
-                            text = "Promises Count: ${viewModel.promises.observeAsState(emptyList()).value.size}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = StarWhite
-                        )
-
-                        Button(
-                            onClick = {
-                                viewModel.forceInitializePromises()
-                                onPromisesClick()
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = ElectricGreen
-                            ),
-                            modifier = Modifier.padding(top = 8.dp)
-                        ) {
-                            Text("FORCE INITIALIZE PROMISES")
-                        }
-                    }
-                }
                 // App Info
                 Text(
                     text = "QuoteX v1.0 | Daily Cosmic Wisdom",
@@ -526,55 +501,117 @@ fun MainScreen(
     }
 }
 
-// Simple QuoteCard implementation that guarantees visibility
+// ChapterButton component
 @Composable
-fun QuoteCard(
-    quote: Quote,
-    modifier: Modifier = Modifier
+fun ChapterButton(
+    chapter: Int,
+    onClick: () -> Unit
 ) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = GlassSurface.copy(alpha = 0.8f),
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = NebulaPurple.copy(alpha = 0.7f),
             contentColor = StarWhite
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        modifier = Modifier.size(48.dp),
+        contentPadding = PaddingValues(0.dp),
+        shape = CircleShape
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "\"${quote.text}\"",
-                style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(bottom = 16.dp),
-                color = StarWhite
-            )
+        Text(
+            text = "$chapter",
+            style = MaterialTheme.typography.titleMedium
+        )
+    }
+}
 
-            Text(
-                text = quote.reference,
-                style = MaterialTheme.typography.bodyMedium,
-                fontStyle = FontStyle.Italic,
-                color = CyberBlue,
-                modifier = Modifier
-                    .align(Alignment.End)
-                    .background(
-                        color = GlassSurfaceDark.copy(alpha = 0.5f),
-                        shape = MaterialTheme.shapes.small
+// PromisesPager implementation - moved from original file
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun PromisesPager(
+    promises: List<Promise>,
+    modifier: Modifier = Modifier,
+    initialPage: Int = 0,
+    onEditPromise: (Promise) -> Unit = {},
+    onDeletePromise: (Promise) -> Unit = {}
+) {
+    if (promises.isEmpty()) {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                FuturisticLoadingIndicator(
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                Text(
+                    text = "No promises saved yet",
+                    textAlign = TextAlign.Center,
+                    color = StarWhite
+                )
+            }
+        }
+        return
+    }
+
+    val pagerState = rememberPagerState(initialPage = initialPage) { promises.size }
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = modifier
+                .fillMaxWidth()
+                .weight(1f)
+        ) { page ->
+            if (page < promises.size) {
+                PromiseCard(
+                    promise = promises[page],
+                    onEditClick = { onEditPromise(promises[page]) },
+                    onDeleteClick = { onDeletePromise(promises[page]) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No more promises available",
+                        textAlign = TextAlign.Center,
+                        color = StarWhite
                     )
-                    .padding(horizontal = 12.dp, vertical = 4.dp)
-            )
+                }
+            }
+        }
+
+        // Add page indicator dots
+        if (promises.size > 1) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                repeat(promises.size) { iteration ->
+                    val color = if (pagerState.currentPage == iteration) ElectricGreen else StarWhite.copy(alpha = 0.3f)
+                    Box(
+                        modifier = Modifier
+                            .padding(2.dp)
+                            .clip(CircleShape)
+                            .background(color)
+                            .size(if (pagerState.currentPage == iteration) 10.dp else 8.dp)
+                    )
+                }
+            }
         }
     }
 }
 
-// PromiseCard implementation to display promises - moved to top level
+// PromiseCard implementation to display promises
 @Composable
 fun PromiseCard(
     promise: Promise,
@@ -664,93 +701,6 @@ fun PromiseCard(
                             modifier = Modifier.size(16.dp)
                         )
                     }
-                }
-            }
-        }
-    }
-}
-
-// PromisesPager implementation - moved to top level
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-fun PromisesPager(
-    promises: List<Promise>,
-    modifier: Modifier = Modifier,
-    initialPage: Int = 0,
-    onEditPromise: (Promise) -> Unit = {},
-    onDeletePromise: (Promise) -> Unit = {}
-) {
-    if (promises.isEmpty()) {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                FuturisticLoadingIndicator(
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-                Text(
-                    text = "No promises saved yet",
-                    textAlign = TextAlign.Center,
-                    color = StarWhite
-                )
-            }
-        }
-        return
-    }
-
-    val pagerState = rememberPagerState(initialPage = initialPage) { promises.size }
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        HorizontalPager(
-            state = pagerState,
-            modifier = modifier
-                .fillMaxWidth()
-                .weight(1f)
-        ) { page ->
-            if (page < promises.size) {
-                PromiseCard(
-                    promise = promises[page],
-                    onEditClick = { onEditPromise(promises[page]) },
-                    onDeleteClick = { onDeletePromise(promises[page]) },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            } else {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "No more promises available",
-                        textAlign = TextAlign.Center,
-                        color = StarWhite
-                    )
-                }
-            }
-        }
-
-        // Add page indicator dots
-        if (promises.size > 1) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                repeat(promises.size) { iteration ->
-                    val color = if (pagerState.currentPage == iteration) ElectricGreen else StarWhite.copy(alpha = 0.3f)
-                    Box(
-                        modifier = Modifier
-                            .padding(2.dp)
-                            .clip(CircleShape)
-                            .background(color)
-                            .size(if (pagerState.currentPage == iteration) 10.dp else 8.dp)
-                    )
                 }
             }
         }
