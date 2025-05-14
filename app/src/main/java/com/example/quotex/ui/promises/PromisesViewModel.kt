@@ -27,6 +27,7 @@ class PromisesViewModel @Inject constructor(
 
     private val _searchQuery = MutableStateFlow("")
 
+    // Main promises LiveData that contains all promises
     val promises: LiveData<List<Promise>> = _searchQuery.flatMapLatest { query ->
         if (query.isBlank()) {
             promisesRepository.getAllPromises()
@@ -43,8 +44,13 @@ class PromisesViewModel @Inject constructor(
         }
     }.asLiveData()
 
+    // LiveData to track which promise is being edited
     private val _editingPromise = MutableLiveData<Promise?>(null)
     val editingPromise: LiveData<Promise?> = _editingPromise
+
+    // LiveData for the currently selected title (for detail view)
+    private val _selectedTitle = MutableLiveData<String>("")
+    val selectedTitle: LiveData<String> = _selectedTitle
 
     init {
         // Force database initialization and add test promise
@@ -99,7 +105,7 @@ class PromisesViewModel @Inject constructor(
                     reference = reference
                 )
                 promisesRepository.addPromise(promise)
-                Log.d("PromisesViewModel", "Promise added: $title")
+                Log.d("PromisesViewModel", "Promise added: $title - $verse")
             } catch (e: Exception) {
                 Log.e("PromisesViewModel", "Error adding promise: ${e.message}", e)
             }
@@ -111,7 +117,7 @@ class PromisesViewModel @Inject constructor(
             try {
                 promisesRepository.updatePromise(promise)
                 _editingPromise.value = null
-                Log.d("PromisesViewModel", "Promise updated: ${promise.title}")
+                Log.d("PromisesViewModel", "Promise updated: ${promise.title} - ${promise.verse}")
             } catch (e: Exception) {
                 Log.e("PromisesViewModel", "Error updating promise: ${e.message}", e)
             }
@@ -122,7 +128,7 @@ class PromisesViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 promisesRepository.deletePromise(promise)
-                Log.d("PromisesViewModel", "Promise deleted: ${promise.title}")
+                Log.d("PromisesViewModel", "Promise deleted: ${promise.title} - ${promise.verse}")
             } catch (e: Exception) {
                 Log.e("PromisesViewModel", "Error deleting promise: ${e.message}", e)
             }
@@ -155,9 +161,112 @@ class PromisesViewModel @Inject constructor(
                     "Proverbs 3:5-6"
                 )
 
+                // Add a couple more promises with the same titles to demonstrate grouping
+                addPromise(
+                    "God's Strength",
+                    "God is our refuge and strength, an ever-present help in trouble.",
+                    "Psalm 46:1"
+                )
+
+                addPromise(
+                    "Trust in the Lord",
+                    "Commit to the Lord whatever you do, and he will establish your plans.",
+                    "Proverbs 16:3"
+                )
+
                 Log.d("PromisesViewModel", "Successfully added sample promises")
             } catch (e: Exception) {
                 Log.e("PromisesViewModel", "Error adding sample promises: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * Clears the currently editing promise
+     */
+    fun clearEditingPromise() {
+        _editingPromise.value = null
+    }
+
+    /**
+     * Sets the currently selected title for detail view
+     */
+    fun setSelectedTitle(title: String) {
+        _selectedTitle.value = title
+    }
+
+    /**
+     * Creates a new category (title) with an optional initial promise
+     */
+    fun createNewCategory(title: String, initialVerse: String = "", initialReference: String = "") {
+        if (title.isBlank()) return
+
+        // If initial verse is provided, add a promise with this category
+        if (initialVerse.isNotBlank()) {
+            addPromise(title.trim(), initialVerse, initialReference)
+        } else {
+            // Otherwise, create an empty category by adding a placeholder promise
+            // that can be modified later
+            viewModelScope.launch {
+                try {
+                    // Check if this category already exists
+                    val existingPromises = promises.value ?: emptyList()
+                    val categoryExists = existingPromises.any { it.title.equals(title.trim(), ignoreCase = true) }
+
+                    if (!categoryExists) {
+                        // Add invisible "initializing" flag to the promise so it can be displayed
+                        // with special UI if needed (can remove this if not needed)
+                        val metadata = "category_created:${System.currentTimeMillis()}"
+
+                        // Create a placeholder promise for this category
+                        val placeholderPromise = Promise(
+                            id = System.currentTimeMillis(),
+                            title = title.trim(),
+                            verse = "",  // Empty verse
+                            reference = metadata // Store creation metadata in reference field temporarily
+                        )
+
+                        // Don't actually save an empty promise - just notify that the category was created
+                        Log.d("PromisesViewModel", "New category created: $title")
+                    } else {
+                        Log.d("PromisesViewModel", "Category already exists: $title")
+                    }
+                } catch (e: Exception) {
+                    Log.e("PromisesViewModel", "Error creating category: ${e.message}", e)
+                }
+            }
+        }
+    }
+
+    /**
+     * Gets distinct titles from all promises
+     */
+    fun getDistinctTitles(): List<String> {
+        return promises.value?.map { it.title }?.distinct()?.sorted() ?: emptyList()
+    }
+
+    /**
+     * Gets promises for the specified title
+     */
+    fun getPromisesForTitle(title: String): List<Promise> {
+        return promises.value?.filter { it.title == title } ?: emptyList()
+    }
+
+    /**
+     * Deletes all promises with the specified title (effectively deleting the category)
+     */
+    fun deleteCategory(title: String) {
+        viewModelScope.launch {
+            try {
+                val promisesToDelete = promises.value?.filter { it.title == title } ?: emptyList()
+
+                for (promise in promisesToDelete) {
+                    promisesRepository.deletePromise(promise)
+                }
+
+                Log.d("PromisesViewModel", "Deleted category: $title with ${promisesToDelete.size} promises")
+            } catch (e: Exception) {
+                Log.e("PromisesViewModel", "Error deleting category: ${e.message}", e)
             }
         }
     }

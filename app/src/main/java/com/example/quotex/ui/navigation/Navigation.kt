@@ -1,6 +1,6 @@
 package com.example.quotex.ui.navigation
 
-import android.util.Log
+import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -13,11 +13,11 @@ import com.example.quotex.ui.chapter.ChapterScreen
 import com.example.quotex.ui.chapter.ChapterViewModel
 import com.example.quotex.ui.main.MainScreen
 import com.example.quotex.ui.main.MainViewModel
-import com.example.quotex.ui.promises.PromisesScreen
-import com.example.quotex.ui.promises.PromisesViewModel
+import com.example.quotex.ui.promises.*
 import com.example.quotex.ui.settings.SettingsScreen
+import java.net.URLDecoder
+import java.net.URLEncoder
 
-// Use a proper sealed interface instead of sealed class for better data class support
 sealed interface Screen {
     val route: String
 
@@ -31,6 +31,22 @@ sealed interface Screen {
 
     data object Promises : Screen {
         override val route = "promises"
+    }
+
+    // Screen to display promise titles (categories)
+    data object PromiseTitles : Screen {
+        override val route = "promise_titles"
+    }
+
+    // Screen to display promises for a selected title
+    data object PromiseDetail : Screen {
+        const val titleArg = "title"
+        override val route = "promise_detail/{$titleArg}"
+
+        fun createRoute(title: String): String {
+            val encodedTitle = Uri.encode(title)
+            return "promise_detail/$encodedTitle"
+        }
     }
 
     data object Chapter : Screen {
@@ -47,7 +63,7 @@ fun AppNavigation(
     navController: NavHostController = rememberNavController(),
     mainViewModel: MainViewModel
 ) {
-    // Create a separate PromisesViewModel instance for the Promises screen
+    // Create a separate PromisesViewModel instance for the Promises screens
     val promisesViewModel: PromisesViewModel = viewModel()
 
     // Create ChapterViewModel for the Chapter screen
@@ -64,15 +80,13 @@ fun AppNavigation(
                     navController.navigate(Screen.Settings.route)
                 },
                 onPromisesClick = {
-                    Log.d("Navigation", "Navigating to Promises screen")
-                    navController.navigate(Screen.Promises.route)
+                    // Navigate to PromiseTitles (categories) screen
+                    navController.navigate(Screen.PromiseTitles.route)
                 },
                 onQuoteClick = { chapterNumber ->
-                    Log.d("Navigation", "Navigating to Chapter screen for chapter $chapterNumber")
                     navController.navigate(Screen.Chapter.createRoute(chapterNumber))
                 },
                 showSnackbar = { message ->
-                    Log.d("Navigation", "Showing snackbar: $message")
                     // Implementation if needed
                 }
             )
@@ -87,10 +101,48 @@ fun AppNavigation(
             )
         }
 
+        // Original Promises screen for backward compatibility
         composable(Screen.Promises.route) {
-            // Use the proper PromisesViewModel here instead of MainViewModel
             PromisesScreen(
                 viewModel = promisesViewModel,
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Add Categories (PromiseTitles) screen
+        composable(Screen.PromiseTitles.route) {
+            PromiseTitlesScreen(
+                viewModel = promisesViewModel,
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onTitleClick = { title ->
+                    // Navigate to detail screen with the title
+                    navController.navigate(Screen.PromiseDetail.createRoute(title))
+                }
+            )
+        }
+
+        // Add PromiseDetail screen to show promises in a category
+        composable(
+            route = Screen.PromiseDetail.route,
+            arguments = listOf(
+                navArgument(Screen.PromiseDetail.titleArg) {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+            val encodedTitle = backStackEntry.arguments?.getString(Screen.PromiseDetail.titleArg) ?: ""
+            val title = URLDecoder.decode(encodedTitle, "UTF-8")
+
+            // Set the selected title in ViewModel
+            promisesViewModel.setSelectedTitle(title)
+
+            PromiseDetailScreen(
+                viewModel = promisesViewModel,
+                title = title,
                 onBackClick = {
                     navController.popBackStack()
                 }
