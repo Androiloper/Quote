@@ -1,5 +1,4 @@
 // app/src/main/java/com/example/quotex/ui/categories/TitleListScreen.kt
-// Updated to use real data from repository
 
 package com.example.quotex.ui.categories
 
@@ -12,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -46,17 +46,32 @@ fun TitleListScreen(
     onTitleClick: (String) -> Unit
 ) {
     var showAddTitleDialog by remember { mutableStateOf(false) }
+    var showEditTitleDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var titleToEdit by remember { mutableStateOf<Title?>(null) }
+    var titleToDelete by remember { mutableStateOf<Title?>(null) }
 
     // Get titles for the selected category
     val titles by viewModel.titles.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
+
+    // Show error if needed
+    error?.let {
+        LaunchedEffect(it) {
+            // You would display a snackbar here
+            Log.e("TitleListScreen", "Error: $it")
+            // Clear error after displaying
+            viewModel.clearError()
+        }
+    }
 
     // Load titles when the screen is first composed
     LaunchedEffect(category) {
         viewModel.loadTitlesByCategory(category)
     }
 
-    // Create cosmic background
+    // Create cosmic background - the same as in CategoryListScreen
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -211,33 +226,27 @@ fun TitleListScreen(
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(vertical = 8.dp)
+                            .padding(vertical = 8.dp, horizontal = 8.dp)
                     ) {
                         items(titles) { title ->
                             TitleItem(
-                                title = title.name,
-                                onClick = { onTitleClick(title.name) }
+                                title = title,
+                                onClick = { onTitleClick(title.name) },
+                                onEditClick = {
+                                    titleToEdit = title
+                                    showEditTitleDialog = true
+                                },
+                                onDeleteClick = {
+                                    titleToDelete = title
+                                    showDeleteConfirmation = true
+                                }
                             )
                         }
-                    }
-                }
 
-                // Add button at the bottom of the list if there are already titles
-                if (titles.isNotEmpty()) {
-                    FloatingActionButton(
-                        onClick = { showAddTitleDialog = true },
-                        containerColor = NebulaPurple,
-                        contentColor = StarWhite,
-                        modifier = Modifier
-                            .size(32.dp)
-                            .align(Alignment.BottomEnd)
-                            .padding(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Add Title",
-                            modifier = Modifier.size(16.dp)
-                        )
+                        // Add some bottom spacing
+                        item {
+                            Spacer(modifier = Modifier.height(80.dp))
+                        }
                     }
                 }
             }
@@ -251,7 +260,38 @@ fun TitleListScreen(
                     // Create new title and associate with this category
                     viewModel.createTitle(titleName, category)
                     showAddTitleDialog = false
-                    onTitleClick(titleName) // Navigate to the new title
+                }
+            )
+        }
+
+        // Edit Title Dialog
+        if (showEditTitleDialog && titleToEdit != null) {
+            EditTitleDialog(
+                title = titleToEdit!!,
+                onDismiss = {
+                    showEditTitleDialog = false
+                    titleToEdit = null
+                },
+                onSave = { title, newName ->
+                    viewModel.updateTitle(title, newName)
+                    showEditTitleDialog = false
+                    titleToEdit = null
+                }
+            )
+        }
+
+        // Delete Confirmation Dialog
+        if (showDeleteConfirmation && titleToDelete != null) {
+            DeleteTitleConfirmationDialog(
+                titleName = titleToDelete!!.name,
+                onDismiss = {
+                    showDeleteConfirmation = false
+                    titleToDelete = null
+                },
+                onConfirm = {
+                    viewModel.deleteTitle(titleToDelete!!)
+                    showDeleteConfirmation = false
+                    titleToDelete = null
                 }
             )
         }
@@ -260,16 +300,17 @@ fun TitleListScreen(
 
 @Composable
 fun TitleItem(
-    title: String,
-    onClick: () -> Unit
+    title: Title,
+    onClick: () -> Unit,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit
 ) {
     GlassCard(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp, horizontal = 8.dp)
-            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp)
     ) {
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
@@ -280,15 +321,49 @@ fun TitleItem(
                         )
                     )
                 )
+                .clickable(onClick = onClick)
                 .padding(vertical = 12.dp, horizontal = 16.dp),
-            contentAlignment = Alignment.Center
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            // Title text
             Text(
-                text = title,
+                text = title.name,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = StarWhite
+                color = StarWhite,
+                modifier = Modifier.weight(1f)
             )
+
+            // Action buttons
+            Row {
+                // Edit button
+                IconButton(
+                    onClick = onEditClick,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .padding(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit ${title.name}",
+                        tint = CyberBlue
+                    )
+                }
+
+                // Delete button
+                IconButton(
+                    onClick = onDeleteClick,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .padding(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete ${title.name}",
+                        tint = NeonPink
+                    )
+                }
+            }
         }
     }
 }
@@ -376,4 +451,137 @@ fun AddTitleDialog(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditTitleDialog(
+    title: Title,
+    onDismiss: () -> Unit,
+    onSave: (Title, String) -> Unit
+) {
+    var titleName by remember { mutableStateOf(title.name) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = GlassSurface,
+                contentColor = StarWhite
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            shape = MaterialTheme.shapes.large
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "EDIT TITLE",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = CyberBlue
+                )
+
+                OutlinedTextField(
+                    value = titleName,
+                    onValueChange = { titleName = it },
+                    label = { Text("Title Name") },
+                    placeholder = { Text("Enter a name for the title") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = CyberBlue,
+                        unfocusedBorderColor = StarWhite.copy(alpha = 0.5f),
+                        focusedTextColor = StarWhite,
+                        unfocusedTextColor = StarWhite,
+                        cursorColor = CyberBlue,
+                        focusedLabelColor = CyberBlue,
+                        unfocusedLabelColor = StarWhite.copy(alpha = 0.7f)
+                    ),
+                    singleLine = true
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.padding(end = 8.dp),
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = StarWhite.copy(alpha = 0.7f)
+                        )
+                    ) {
+                        Text("CANCEL")
+                    }
+
+                    Button(
+                        onClick = {
+                            if (titleName.isNotBlank()) {
+                                onSave(title, titleName.trim())
+                            }
+                        },
+                        enabled = titleName.isNotBlank() && titleName != title.name,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = CyberBlue,
+                            disabledContainerColor = CyberBlue.copy(alpha = 0.5f)
+                        )
+                    ) {
+                        Text("SAVE")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DeleteTitleConfirmationDialog(
+    titleName: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = GlassSurface,
+        textContentColor = StarWhite,
+        titleContentColor = NeonPink,
+        title = {
+            Text("Delete Title")
+        },
+        text = {
+            Column {
+                Text("Are you sure you want to delete title '$titleName'?")
+                Text(
+                    "This will permanently delete the title and all associated subtitles and promises.",
+                    color = StarWhite.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = NeonPink
+                )
+            ) {
+                Text("DELETE")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = StarWhite
+                )
+            ) {
+                Text("CANCEL")
+            }
+        }
+    )
 }

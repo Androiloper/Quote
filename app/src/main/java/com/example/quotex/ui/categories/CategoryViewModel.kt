@@ -13,8 +13,8 @@ import com.example.quotex.model.Title
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import java.util.Date
 import javax.inject.Inject
 
 /**
@@ -65,24 +65,27 @@ class CategoryViewModel @Inject constructor(
     private val _favoritePromises = MutableStateFlow<List<Promise>>(emptyList())
     val favoritePromises: StateFlow<List<Promise>> = _favoritePromises
 
+    // Error state
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error
+
     init {
         loadInitialData()
     }
 
     /**
-     * Load initial data - this will eventually be replaced with actual database queries
+     * Load initial data from repository
      */
     private fun loadInitialData() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // For now, we'll load sample data
-                // In a real implementation, these would come from repositories
                 loadCategories()
                 loadRecentPromises()
                 loadFavoritePromises()
             } catch (e: Exception) {
                 Log.e("CategoryViewModel", "Error loading initial data: ${e.message}", e)
+                _error.value = "Failed to load data: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
@@ -94,19 +97,23 @@ class CategoryViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // In a real implementation, this would load from a repository
-                val sampleCategories = listOf(
-                    Category(id = 1, name = "CAT 1"),
-                    Category(id = 2, name = "CAT 2"),
-                    Category(id = 3, name = "CAT 4"),
-                    Category(id = 4, name = "CAT 5"),
-                    Category(id = 5, name = "CAT 7"),
-                    Category(id = 6, name = "CAT 8")
-                )
-                _categories.value = sampleCategories
-                Log.d("CategoryViewModel", "Loaded ${sampleCategories.size} categories")
+                // Load from database via repository
+                val allPromises = promisesRepository.getAllPromises().first()
+
+                // Extract unique categories from promises
+                val uniqueCategories = allPromises
+                    .map { it.title }
+                    .distinct()
+                    .mapIndexed { index, name ->
+                        Category(id = index.toLong() + 1, name = name)
+                    }
+                    .sortedBy { it.name }
+
+                _categories.value = uniqueCategories
+                Log.d("CategoryViewModel", "Loaded ${uniqueCategories.size} categories")
             } catch (e: Exception) {
                 Log.e("CategoryViewModel", "Error loading categories: ${e.message}", e)
+                _error.value = "Failed to load categories: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
@@ -120,15 +127,93 @@ class CategoryViewModel @Inject constructor(
     }
 
     fun createCategory(name: String) {
+        if (name.isBlank()) return
+
         viewModelScope.launch {
             _isLoading.value = true
             try {
+                // Check if category already exists
+                if (_categories.value.any { it.name.equals(name, ignoreCase = true) }) {
+                    _error.value = "Category '$name' already exists"
+                    return@launch
+                }
+
+                // Create a new category
                 val newId = (_categories.value.maxOfOrNull { it.id } ?: 0) + 1
                 val newCategory = Category(id = newId, name = name)
                 _categories.value = _categories.value + newCategory
+
+                // Also create a default subtitle
+                createTitle(name = "General", categoryName = name)
+
                 Log.d("CategoryViewModel", "Created new category: $name with id: $newId")
             } catch (e: Exception) {
                 Log.e("CategoryViewModel", "Error creating category: ${e.message}", e)
+                _error.value = "Failed to create category: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun updateCategory(category: Category, newName: String) {
+        if (newName.isBlank()) return
+
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                // Check if the new name already exists
+                if (_categories.value.any { it.id != category.id && it.name.equals(newName, ignoreCase = true) }) {
+                    _error.value = "Category '$newName' already exists"
+                    return@launch
+                }
+
+                // Update category in the list
+                val updatedCategories = _categories.value.map {
+                    if (it.id == category.id) it.copy(name = newName) else it
+                }
+                _categories.value = updatedCategories
+
+                // Update all promises with this category
+                // (In a real app, this would update in the database)
+                val allPromises = promisesRepository.getAllPromises().first()
+                allPromises.filter { it.title == category.name }.forEach { promise ->
+                    promisesRepository.updatePromise(promise.copy(title = newName))
+                }
+
+                Log.d("CategoryViewModel", "Updated category ${category.id} from '${category.name}' to '$newName'")
+            } catch (e: Exception) {
+                Log.e("CategoryViewModel", "Error updating category: ${e.message}", e)
+                _error.value = "Failed to update category: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun deleteCategory(category: Category) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                // Remove category from list
+                _categories.value = _categories.value.filter { it.id != category.id }
+
+                // Delete all promises with this category
+                val allPromises = promisesRepository.getAllPromises().first()
+                allPromises.filter { it.title == category.name }.forEach { promise ->
+                    promisesRepository.deletePromise(promise)
+                }
+
+                // If this was the selected category, clear selection
+                if (_selectedCategory.value?.id == category.id) {
+                    _selectedCategory.value = null
+                    _titles.value = emptyList()
+                }
+
+                Log.d("CategoryViewModel", "Deleted category: ${category.name}")
+            } catch (e: Exception) {
+                Log.e("CategoryViewModel", "Error deleting category: ${e.message}", e)
+                _error.value = "Failed to delete category: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
@@ -140,31 +225,22 @@ class CategoryViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // Find the category ID for this category name
-                val category = _categories.value.find { it.name == categoryName }
-                val categoryId = category?.id ?: 0
+                // In a real implementation, this would query titles from a repository
+                // based on the category name
+                // For this implementation, we'll create a basic set of titles
 
-                // In a real implementation, this would load from a repository
-                val sampleTitles = listOf(
-                    Title(id = 1, categoryId = 1, name = "TITLE 1"),
-                    Title(id = 2, categoryId = 1, name = "TITLE 2"),
-                    Title(id = 3, categoryId = 1, name = "TITLE 3"),
-                    Title(id = 4, categoryId = 1, name = "TITLE 4"),
-                    Title(id = 5, categoryId = 1, name = "TITLE 5"),
-                    Title(id = 6, categoryId = 1, name = "TITLE 6"),
-
-                    Title(id = 7, categoryId = 2, name = "TITLE 7"),
-                    Title(id = 8, categoryId = 2, name = "TITLE 8")
+                val defaultTitles = listOf(
+                    Title(id = 1, categoryId = 1, name = "General"),
+                    Title(id = 2, categoryId = 1, name = "Scripture")
                 )
 
-                // Filter to only the titles for this category
-                val filteredTitles = sampleTitles.filter { it.categoryId == categoryId }
-                _titles.value = filteredTitles
-                _selectedCategory.value = category
+                _titles.value = defaultTitles
+                _selectedCategory.value = _categories.value.find { it.name == categoryName }
 
-                Log.d("CategoryViewModel", "Loaded ${filteredTitles.size} titles for category $categoryName")
+                Log.d("CategoryViewModel", "Loaded titles for category $categoryName")
             } catch (e: Exception) {
                 Log.e("CategoryViewModel", "Error loading titles: ${e.message}", e)
+                _error.value = "Failed to load titles: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
@@ -178,27 +254,93 @@ class CategoryViewModel @Inject constructor(
     }
 
     fun createTitle(name: String, categoryName: String) {
+        if (name.isBlank() || categoryName.isBlank()) return
+
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // Find the category ID for this category name
+                // Find the category
                 val category = _categories.value.find { it.name == categoryName }
-                val categoryId = category?.id ?: 0
+                if (category == null) {
+                    _error.value = "Category not found: $categoryName"
+                    return@launch
+                }
 
+                // Check if title already exists in this category
+                if (_titles.value.any { it.name.equals(name, ignoreCase = true) }) {
+                    _error.value = "Title '$name' already exists in this category"
+                    return@launch
+                }
+
+                // Create new title
                 val newId = (_titles.value.maxOfOrNull { it.id } ?: 0) + 1
-                val newTitle = Title(id = newId, categoryId = categoryId, name = name)
-
-                // Add the new title to our list
+                val newTitle = Title(id = newId, categoryId = category.id, name = name)
                 _titles.value = _titles.value + newTitle
-                Log.d("CategoryViewModel", "Created new title: $name for category $categoryName")
-
-                // Automatically select this title
-                _selectedTitle.value = newTitle
 
                 // Create a default subtitle for this title
                 createSubtitle("DEFAULT", name)
+
+                Log.d("CategoryViewModel", "Created new title: $name for category $categoryName")
             } catch (e: Exception) {
                 Log.e("CategoryViewModel", "Error creating title: ${e.message}", e)
+                _error.value = "Failed to create title: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun updateTitle(title: Title, newName: String) {
+        if (newName.isBlank()) return
+
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                // Check if the new name already exists in this category
+                if (_titles.value.any { it.id != title.id && it.name.equals(newName, ignoreCase = true) }) {
+                    _error.value = "Title '$newName' already exists in this category"
+                    return@launch
+                }
+
+                // Update title in the list
+                val updatedTitles = _titles.value.map {
+                    if (it.id == title.id) it.copy(name = newName) else it
+                }
+                _titles.value = updatedTitles
+
+                // If this was the selected title, update selection
+                if (_selectedTitle.value?.id == title.id) {
+                    _selectedTitle.value = updatedTitles.find { it.id == title.id }
+                }
+
+                Log.d("CategoryViewModel", "Updated title ${title.id} from '${title.name}' to '$newName'")
+            } catch (e: Exception) {
+                Log.e("CategoryViewModel", "Error updating title: ${e.message}", e)
+                _error.value = "Failed to update title: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun deleteTitle(title: Title) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                // Remove title from list
+                _titles.value = _titles.value.filter { it.id != title.id }
+
+                // If this was the selected title, clear selection
+                if (_selectedTitle.value?.id == title.id) {
+                    _selectedTitle.value = null
+                    _subtitles.value = emptyList()
+                    _promises.value = emptyList()
+                }
+
+                Log.d("CategoryViewModel", "Deleted title: ${title.name}")
+            } catch (e: Exception) {
+                Log.e("CategoryViewModel", "Error deleting title: ${e.message}", e)
+                _error.value = "Failed to delete title: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
@@ -210,36 +352,31 @@ class CategoryViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // Find the title ID for this title name
-                val title = _titles.value.find { it.name == titleName }
-                val titleId = title?.id ?: 0
+                // In a real implementation, this would query subtitles from a repository
+                // For this implementation, we'll create a basic set of subtitles
 
-                // In a real implementation, this would load from a repository
-                val sampleSubtitles = listOf(
-                    Subtitle(id = 1, titleId = 1, name = "DEFAULT"),
-                    Subtitle(id = 2, titleId = 1, name = "SUB TITLE 1"),
-                    Subtitle(id = 3, titleId = 1, name = "SUB TITLE 2"),
-
-                    Subtitle(id = 4, titleId = 2, name = "DEFAULT"),
-                    Subtitle(id = 5, titleId = 2, name = "ANOTHER SUB")
+                val defaultSubtitles = listOf(
+                    Subtitle(id = 1, titleId = 1, name = "DEFAULT")
                 )
 
-                // Filter to only the subtitles for this title
-                val filteredSubtitles = sampleSubtitles.filter { it.titleId == titleId }
-                _subtitles.value = filteredSubtitles
+                // Find the title ID
+                val title = _titles.value.find { it.name == titleName }
+
+                _subtitles.value = defaultSubtitles
                 _selectedTitle.value = title
 
                 // If we have subtitles, automatically select the first one
-                if (filteredSubtitles.isNotEmpty()) {
-                    selectSubtitle(filteredSubtitles.first().id)
+                if (defaultSubtitles.isNotEmpty()) {
+                    selectSubtitle(defaultSubtitles.first().id)
                 } else {
                     _selectedSubtitle.value = null
                     _promises.value = emptyList()
                 }
 
-                Log.d("CategoryViewModel", "Loaded ${filteredSubtitles.size} subtitles for title $titleName")
+                Log.d("CategoryViewModel", "Loaded subtitles for title $titleName")
             } catch (e: Exception) {
                 Log.e("CategoryViewModel", "Error loading subtitles: ${e.message}", e)
+                _error.value = "Failed to load subtitles: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
@@ -253,16 +390,27 @@ class CategoryViewModel @Inject constructor(
     }
 
     fun createSubtitle(name: String, titleName: String) {
+        if (name.isBlank()) return
+
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // Find the title ID for this title name
-                val title = _titles.value.find { it.name == titleName }
-                    ?: _selectedTitle.value
-                val titleId = title?.id ?: 0
+                // Find the title
+                val title = _titles.value.find { it.name == titleName } ?: _selectedTitle.value
+                if (title == null) {
+                    _error.value = "Title not found: $titleName"
+                    return@launch
+                }
 
+                // Check if subtitle already exists for this title
+                if (_subtitles.value.any { it.name.equals(name, ignoreCase = true) }) {
+                    _error.value = "Subtitle '$name' already exists for this title"
+                    return@launch
+                }
+
+                // Create new subtitle
                 val newId = (_subtitles.value.maxOfOrNull { it.id } ?: 0) + 1
-                val newSubtitle = Subtitle(id = newId, titleId = titleId, name = name)
+                val newSubtitle = Subtitle(id = newId, titleId = title.id, name = name)
                 _subtitles.value = _subtitles.value + newSubtitle
 
                 // Automatically select this subtitle
@@ -271,6 +419,74 @@ class CategoryViewModel @Inject constructor(
                 Log.d("CategoryViewModel", "Created new subtitle: $name for title $titleName")
             } catch (e: Exception) {
                 Log.e("CategoryViewModel", "Error creating subtitle: ${e.message}", e)
+                _error.value = "Failed to create subtitle: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun updateSubtitle(subtitle: Subtitle, newName: String) {
+        if (newName.isBlank()) return
+
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                // Check if the new name already exists for this title
+                if (_subtitles.value.any { it.id != subtitle.id && it.name.equals(newName, ignoreCase = true) }) {
+                    _error.value = "Subtitle '$newName' already exists for this title"
+                    return@launch
+                }
+
+                // Update subtitle in the list
+                val updatedSubtitles = _subtitles.value.map {
+                    if (it.id == subtitle.id) it.copy(name = newName) else it
+                }
+                _subtitles.value = updatedSubtitles
+
+                // If this was the selected subtitle, update selection
+                if (_selectedSubtitle.value?.id == subtitle.id) {
+                    _selectedSubtitle.value = updatedSubtitles.find { it.id == subtitle.id }
+                }
+
+                Log.d("CategoryViewModel", "Updated subtitle ${subtitle.id} from '${subtitle.name}' to '$newName'")
+            } catch (e: Exception) {
+                Log.e("CategoryViewModel", "Error updating subtitle: ${e.message}", e)
+                _error.value = "Failed to update subtitle: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun deleteSubtitle(subtitle: Subtitle) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                // Can't delete the last subtitle
+                if (_subtitles.value.size <= 1) {
+                    _error.value = "Cannot delete the last subtitle"
+                    return@launch
+                }
+
+                // Remove subtitle from list
+                _subtitles.value = _subtitles.value.filter { it.id != subtitle.id }
+
+                // If this was the selected subtitle, select another one
+                if (_selectedSubtitle.value?.id == subtitle.id) {
+                    val newSubtitle = _subtitles.value.firstOrNull()
+                    if (newSubtitle != null) {
+                        selectSubtitle(newSubtitle.id)
+                    } else {
+                        _selectedSubtitle.value = null
+                        _promises.value = emptyList()
+                    }
+                }
+
+                Log.d("CategoryViewModel", "Deleted subtitle: ${subtitle.name}")
+            } catch (e: Exception) {
+                Log.e("CategoryViewModel", "Error deleting subtitle: ${e.message}", e)
+                _error.value = "Failed to delete subtitle: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
@@ -282,24 +498,25 @@ class CategoryViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // In a real implementation, this would load from a repository
-                // based on the subtitleId
+                // In a real implementation, this would query promises from the repository
+                // For now, let's just load all promises for the current category
 
-                // For now, we'll just show some sample promises
-                val samplePromises = listOf(
-                    Promise(id = 1, title = "PROMISE 1", verse = "Trust in the Lord with all your heart", reference = "Proverbs 3:5"),
-                    Promise(id = 2, title = "PROMISE 2", verse = "I can do all things through Christ", reference = "Philippians 4:13"),
-                    Promise(id = 3, title = "PROMISE 3", verse = "For God so loved the world", reference = "John 3:16"),
-                    Promise(id = 4, title = "PROMISE 4", verse = "The Lord is my shepherd", reference = "Psalm 23:1")
-                )
+                val selectedCategory = _selectedCategory.value
+                if (selectedCategory != null) {
+                    val allPromises = promisesRepository.getAllPromises().first()
+                    val filteredPromises = allPromises
+                        .filter { it.title == selectedCategory.name }
+                        .take(5) // Limit to 5 promises for UI display
 
-                // Shuffle the promises so it looks like we're loading different ones
-                // for different subtitles
-                _promises.value = samplePromises.shuffled().take(2)
+                    _promises.value = filteredPromises
+                } else {
+                    _promises.value = emptyList()
+                }
 
                 Log.d("CategoryViewModel", "Loaded promises for subtitle $subtitleId")
             } catch (e: Exception) {
                 Log.e("CategoryViewModel", "Error loading promises: ${e.message}", e)
+                _error.value = "Failed to load promises: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
@@ -310,18 +527,16 @@ class CategoryViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // In a real implementation, this would load from a repository
-                // For now, we'll just use some sample promises
-                val samplePromises = listOf(
-                    Promise(id = 1, title = "PROMISE 1", verse = "Trust in the Lord with all your heart", reference = "Proverbs 3:5"),
-                    Promise(id = 2, title = "PROMISE 2", verse = "I can do all things through Christ", reference = "Philippians 4:13"),
-                    Promise(id = 3, title = "PROMISE 3", verse = "For God so loved the world", reference = "John 3:16")
-                )
-                _recentPromises.value = samplePromises
+                // Get the most recent promises based on ID (assuming higher ID = more recent)
+                val allPromises = promisesRepository.getAllPromises().first()
+                _recentPromises.value = allPromises
+                    .sortedByDescending { it.id }
+                    .take(5) // Limit to 5 most recent promises
 
-                Log.d("CategoryViewModel", "Loaded ${samplePromises.size} recent promises")
+                Log.d("CategoryViewModel", "Loaded ${_recentPromises.value.size} recent promises")
             } catch (e: Exception) {
                 Log.e("CategoryViewModel", "Error loading recent promises: ${e.message}", e)
+                _error.value = "Failed to load recent promises: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
@@ -332,17 +547,17 @@ class CategoryViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // In a real implementation, this would load from a repository
-                // For now, we'll just use some sample promises
-                val samplePromises = listOf(
-                    Promise(id = 2, title = "PROMISE 2", verse = "I can do all things through Christ", reference = "Philippians 4:13"),
-                    Promise(id = 4, title = "PROMISE 4", verse = "The Lord is my shepherd", reference = "Psalm 23:1")
-                )
-                _favoritePromises.value = samplePromises
+                // In a real app, you would have a "favorite" flag to filter by
+                // For this implementation, just use a subset of all promises
 
-                Log.d("CategoryViewModel", "Loaded ${samplePromises.size} favorite promises")
+                val allPromises = promisesRepository.getAllPromises().first()
+                _favoritePromises.value = allPromises
+                    .take(3) // Just take the first 3 as "favorites"
+
+                Log.d("CategoryViewModel", "Loaded ${_favoritePromises.value.size} favorite promises")
             } catch (e: Exception) {
                 Log.e("CategoryViewModel", "Error loading favorite promises: ${e.message}", e)
+                _error.value = "Failed to load favorite promises: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
@@ -353,18 +568,24 @@ class CategoryViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val newId = (_promises.value.maxOfOrNull { it.id } ?: 0) + 1
-                val newPromise = Promise(id = newId, title = title, verse = verse, reference = reference)
+                val newPromise = Promise(
+                    id = System.currentTimeMillis(),
+                    title = title,
+                    verse = verse,
+                    reference = reference
+                )
 
-                // Add to promises list
+                // Save to repository
+                promisesRepository.addPromise(newPromise)
+
+                // Update local lists
                 _promises.value = _promises.value + newPromise
-
-                // Also add to recent promises
-                _recentPromises.value = listOf(newPromise) + _recentPromises.value.take(2)
+                _recentPromises.value = listOf(newPromise) + _recentPromises.value.take(4)
 
                 Log.d("CategoryViewModel", "Created new promise: $title for subtitle $subtitleId")
             } catch (e: Exception) {
                 Log.e("CategoryViewModel", "Error creating promise: ${e.message}", e)
+                _error.value = "Failed to create promise: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
@@ -390,5 +611,10 @@ class CategoryViewModel @Inject constructor(
                 Log.e("CategoryViewModel", "Error toggling favorite: ${e.message}", e)
             }
         }
+    }
+
+    // Clear error message
+    fun clearError() {
+        _error.value = null
     }
 }

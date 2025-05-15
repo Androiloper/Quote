@@ -1,25 +1,21 @@
 // app/src/main/java/com/example/quotex/ui/categories/CategoryListScreen.kt
-// Updated to use real data from repository
 
 package com.example.quotex.ui.categories
 
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -53,12 +49,28 @@ fun CategoryListScreen(
 ) {
     // State
     var showAddCategoryDialog by remember { mutableStateOf(false) }
+    var showEditCategoryDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(0) } // 0 = Recently, 1 = Favorite
+    var categoryToEdit by remember { mutableStateOf<Category?>(null) }
+    var categoryToDelete by remember { mutableStateOf<Category?>(null) }
 
     // Collect data from ViewModel
     val categories by viewModel.categories.collectAsState()
     val recentPromises by viewModel.recentPromises.collectAsState()
     val favoritePromises by viewModel.favoritePromises.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
+
+    // Show error snackbar if needed
+    error?.let {
+        LaunchedEffect(it) {
+            // You would display a snackbar here
+            Log.e("CategoryListScreen", "Error: $it")
+            // Clear error after displaying
+            viewModel.clearError()
+        }
+    }
 
     // Load data when the screen is first composed
     LaunchedEffect(Unit) {
@@ -226,9 +238,9 @@ fun CategoryListScreen(
                     }
                 }
 
-                // CAT SECTIONS title
+                // CATEGORIES title
                 Text(
-                    text = "CAT SECTIONS",
+                    text = "CATEGORIES",
                     style = MaterialTheme.typography.titleLarge,
                     color = ElectricGreen,
                     modifier = Modifier
@@ -237,8 +249,8 @@ fun CategoryListScreen(
                     textAlign = TextAlign.Center
                 )
 
-                if (categories.isEmpty()) {
-                    // Loading or empty state for categories
+                if (isLoading) {
+                    // Loading state for categories
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -246,6 +258,40 @@ fun CategoryListScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         FuturisticLoadingIndicator()
+                    }
+                } else if (categories.isEmpty()) {
+                    // Empty state for categories
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Text(
+                                text = "No categories yet",
+                                color = StarWhite.copy(alpha = 0.7f),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+
+                            Button(
+                                onClick = { showAddCategoryDialog = true },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = NebulaPurple
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Add Category")
+                            }
+                        }
                     }
                 } else {
                     // Grid of categories
@@ -262,10 +308,17 @@ fun CategoryListScreen(
                             ) {
                                 rowCategories.forEach { category ->
                                     CategoryButton(
-                                        text = category.name,
+                                        category = category,
                                         onClick = { onCategoryClick(category.name) },
-                                        isLastItem = category == categories.last(),
-                                        onAddClick = { showAddCategoryDialog = true }
+                                        onEditClick = {
+                                            categoryToEdit = category
+                                            showEditCategoryDialog = true
+                                        },
+                                        onDeleteClick = {
+                                            categoryToDelete = category
+                                            showDeleteConfirmation = true
+                                        },
+                                        isLastItem = category == categories.last()
                                     )
 
                                     // Add spacer if there's only one item in the row
@@ -288,7 +341,38 @@ fun CategoryListScreen(
                     // Handle creating new category
                     viewModel.createCategory(categoryName)
                     showAddCategoryDialog = false
-                    onCategoryClick(categoryName) // Navigate to the new category
+                }
+            )
+        }
+
+        // Edit Category Dialog
+        if (showEditCategoryDialog && categoryToEdit != null) {
+            EditCategoryDialog(
+                category = categoryToEdit!!,
+                onDismiss = {
+                    showEditCategoryDialog = false
+                    categoryToEdit = null
+                },
+                onSave = { category, newName ->
+                    viewModel.updateCategory(category, newName)
+                    showEditCategoryDialog = false
+                    categoryToEdit = null
+                }
+            )
+        }
+
+        // Delete Confirmation Dialog
+        if (showDeleteConfirmation && categoryToDelete != null) {
+            DeleteConfirmationDialog(
+                categoryName = categoryToDelete!!.name,
+                onDismiss = {
+                    showDeleteConfirmation = false
+                    categoryToDelete = null
+                },
+                onConfirm = {
+                    viewModel.deleteCategory(categoryToDelete!!)
+                    showDeleteConfirmation = false
+                    categoryToDelete = null
                 }
             )
         }
@@ -314,16 +398,18 @@ fun TabButton(
 
 @Composable
 fun CategoryButton(
-    text: String,
+    category: Category,
     onClick: () -> Unit,
-    isLastItem: Boolean = false,
-    onAddClick: () -> Unit = {}
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+    isLastItem: Boolean = false
 ) {
     Box(
         modifier = Modifier
             .width(150.dp)
             .padding(4.dp)
     ) {
+        // Main Button
         Button(
             onClick = onClick,
             colors = ButtonDefaults.buttonColors(
@@ -339,16 +425,50 @@ fun CategoryButton(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                text = text,
+                text = category.name,
                 color = StarWhite,
                 style = MaterialTheme.typography.bodyLarge
+            )
+        }
+
+        // Edit Button - small circular button at top right
+        IconButton(
+            onClick = onEditClick,
+            modifier = Modifier
+                .size(28.dp)
+                .align(Alignment.TopEnd)
+                .offset(x = 8.dp, y = (-8).dp)
+                .background(NebulaPurple, CircleShape)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Edit,
+                contentDescription = "Edit ${category.name}",
+                tint = StarWhite,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+
+        // Delete Button - small circular button at bottom right
+        IconButton(
+            onClick = onDeleteClick,
+            modifier = Modifier
+                .size(28.dp)
+                .align(Alignment.BottomEnd)
+                .offset(x = 8.dp, y = 8.dp)
+                .background(NeonPink, CircleShape)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = "Delete ${category.name}",
+                tint = StarWhite,
+                modifier = Modifier.size(16.dp)
             )
         }
 
         // Add button at the bottom right of the last category
         if (isLastItem) {
             FloatingActionButton(
-                onClick = onAddClick,
+                onClick = { /* This will be handled by the main FAB */ },
                 containerColor = NebulaPurple,
                 contentColor = StarWhite,
                 modifier = Modifier
@@ -448,4 +568,137 @@ fun AddCategoryDialog(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditCategoryDialog(
+    category: Category,
+    onDismiss: () -> Unit,
+    onSave: (Category, String) -> Unit
+) {
+    var categoryName by remember { mutableStateOf(category.name) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = GlassSurface,
+                contentColor = StarWhite
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            shape = MaterialTheme.shapes.large
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "EDIT CATEGORY",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = CyberBlue
+                )
+
+                OutlinedTextField(
+                    value = categoryName,
+                    onValueChange = { categoryName = it },
+                    label = { Text("Category Name") },
+                    placeholder = { Text("Enter a name for your category") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = CyberBlue,
+                        unfocusedBorderColor = StarWhite.copy(alpha = 0.5f),
+                        focusedTextColor = StarWhite,
+                        unfocusedTextColor = StarWhite,
+                        cursorColor = CyberBlue,
+                        focusedLabelColor = CyberBlue,
+                        unfocusedLabelColor = StarWhite.copy(alpha = 0.7f)
+                    ),
+                    singleLine = true
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.padding(end = 8.dp),
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = StarWhite.copy(alpha = 0.7f)
+                        )
+                    ) {
+                        Text("CANCEL")
+                    }
+
+                    Button(
+                        onClick = {
+                            if (categoryName.isNotBlank()) {
+                                onSave(category, categoryName.trim())
+                            }
+                        },
+                        enabled = categoryName.isNotBlank() && categoryName != category.name,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = CyberBlue,
+                            disabledContainerColor = CyberBlue.copy(alpha = 0.5f)
+                        )
+                    ) {
+                        Text("SAVE")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DeleteConfirmationDialog(
+    categoryName: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = GlassSurface,
+        textContentColor = StarWhite,
+        titleContentColor = NeonPink,
+        title = {
+            Text("Delete Category")
+        },
+        text = {
+            Column {
+                Text("Are you sure you want to delete category '$categoryName'?")
+                Text(
+                    "This will permanently delete the category and all associated promises.",
+                    color = StarWhite.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = NeonPink
+                )
+            ) {
+                Text("DELETE")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = StarWhite
+                )
+            ) {
+                Text("CANCEL")
+            }
+        }
+    )
 }

@@ -1,5 +1,4 @@
 // app/src/main/java/com/example/quotex/ui/categories/SubtitleListScreen.kt
-// Updated to use real data from repository
 
 package com.example.quotex.ui.categories
 
@@ -54,12 +53,27 @@ fun SubtitleListScreen(
 ) {
     var showAddSubtitleDialog by remember { mutableStateOf(false) }
     var showAddPromiseDialog by remember { mutableStateOf(false) }
+    var showEditSubtitleDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var subtitleToEdit by remember { mutableStateOf<Subtitle?>(null) }
+    var subtitleToDelete by remember { mutableStateOf<Subtitle?>(null) }
 
     // Collect data from ViewModel
     val subtitles by viewModel.subtitles.collectAsState()
     val promises by viewModel.promises.collectAsState()
     val selectedSubtitle by viewModel.selectedSubtitle.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
+
+    // Show error if needed
+    error?.let {
+        LaunchedEffect(it) {
+            // You would display a snackbar here
+            Log.e("SubtitleListScreen", "Error: $it")
+            // Clear error after displaying
+            viewModel.clearError()
+        }
+    }
 
     // Load data when the screen is first composed
     LaunchedEffect(title) {
@@ -206,12 +220,32 @@ fun SubtitleListScreen(
                             .height(150.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "No subtitles found for this title",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = StarWhite.copy(alpha = 0.7f),
-                            textAlign = TextAlign.Center
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "No subtitles found for this title",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = StarWhite.copy(alpha = 0.7f),
+                                textAlign = TextAlign.Center
+                            )
+
+                            Button(
+                                onClick = { showAddSubtitleDialog = true },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = NebulaPurple
+                                ),
+                                modifier = Modifier.padding(top = 16.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Add Subtitle")
+                            }
+                        }
                     }
                 } else {
                     // Subtitle list
@@ -222,9 +256,17 @@ fun SubtitleListScreen(
                     ) {
                         items(subtitles) { subtitle ->
                             SubtitleItem(
-                                subtitle = subtitle.name,
+                                subtitle = subtitle,
                                 isSelected = selectedSubtitle?.id == subtitle.id,
-                                onClick = { viewModel.selectSubtitle(subtitle.id) }
+                                onClick = { viewModel.selectSubtitle(subtitle.id) },
+                                onEditClick = {
+                                    subtitleToEdit = subtitle
+                                    showEditSubtitleDialog = true
+                                },
+                                onDeleteClick = {
+                                    subtitleToDelete = subtitle
+                                    showDeleteConfirmation = true
+                                }
                             )
                         }
                     }
@@ -359,6 +401,38 @@ fun SubtitleListScreen(
             )
         }
 
+        // Edit Subtitle Dialog
+        if (showEditSubtitleDialog && subtitleToEdit != null) {
+            EditSubtitleDialog(
+                subtitle = subtitleToEdit!!,
+                onDismiss = {
+                    showEditSubtitleDialog = false
+                    subtitleToEdit = null
+                },
+                onSave = { subtitle, newName ->
+                    viewModel.updateSubtitle(subtitle, newName)
+                    showEditSubtitleDialog = false
+                    subtitleToEdit = null
+                }
+            )
+        }
+
+        // Delete Subtitle Confirmation Dialog
+        if (showDeleteConfirmation && subtitleToDelete != null) {
+            DeleteSubtitleConfirmationDialog(
+                subtitleName = subtitleToDelete!!.name,
+                onDismiss = {
+                    showDeleteConfirmation = false
+                    subtitleToDelete = null
+                },
+                onConfirm = {
+                    viewModel.deleteSubtitle(subtitleToDelete!!)
+                    showDeleteConfirmation = false
+                    subtitleToDelete = null
+                }
+            )
+        }
+
         // Add Promise Dialog
         if (showAddPromiseDialog) {
             if (selectedSubtitle != null) {
@@ -369,7 +443,7 @@ fun SubtitleListScreen(
                         // Create new promise for this subtitle
                         viewModel.createPromise(
                             subtitleId = selectedSubtitle?.id ?: 0,
-                            title = title,
+                            title = category, // Use category as the title for the promise
                             verse = verse,
                             reference = reference
                         )
@@ -392,9 +466,11 @@ fun SubtitleListScreen(
 
 @Composable
 fun SubtitleItem(
-    subtitle: String,
+    subtitle: Subtitle,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -415,18 +491,51 @@ fun SubtitleItem(
             )
         } else null
     ) {
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            contentAlignment = Alignment.Center
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            // Subtitle name
             Text(
-                text = subtitle,
+                text = subtitle.name,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium,
-                color = if (isSelected) StarWhite else StarWhite.copy(alpha = 0.7f)
+                color = if (isSelected) StarWhite else StarWhite.copy(alpha = 0.7f),
+                modifier = Modifier.weight(1f)
             )
+
+            // Action buttons
+            Row {
+                // Edit button
+                IconButton(
+                    onClick = onEditClick,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .padding(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit ${subtitle.name}",
+                        tint = CyberBlue
+                    )
+                }
+
+                // Delete button
+                IconButton(
+                    onClick = onDeleteClick,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .padding(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete ${subtitle.name}",
+                        tint = NeonPink
+                    )
+                }
+            }
         }
     }
 }
@@ -558,6 +667,139 @@ fun AddSubtitleDialog(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditSubtitleDialog(
+    subtitle: Subtitle,
+    onDismiss: () -> Unit,
+    onSave: (Subtitle, String) -> Unit
+) {
+    var subtitleName by remember { mutableStateOf(subtitle.name) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = GlassSurface,
+                contentColor = StarWhite
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            shape = MaterialTheme.shapes.large
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "EDIT SUBTITLE",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = CyberBlue
+                )
+
+                OutlinedTextField(
+                    value = subtitleName,
+                    onValueChange = { subtitleName = it },
+                    label = { Text("Subtitle Name") },
+                    placeholder = { Text("Enter a name for the subtitle") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = CyberBlue,
+                        unfocusedBorderColor = StarWhite.copy(alpha = 0.5f),
+                        focusedTextColor = StarWhite,
+                        unfocusedTextColor = StarWhite,
+                        cursorColor = CyberBlue,
+                        focusedLabelColor = CyberBlue,
+                        unfocusedLabelColor = StarWhite.copy(alpha = 0.7f)
+                    ),
+                    singleLine = true
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.padding(end = 8.dp),
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = StarWhite.copy(alpha = 0.7f)
+                        )
+                    ) {
+                        Text("CANCEL")
+                    }
+
+                    Button(
+                        onClick = {
+                            if (subtitleName.isNotBlank()) {
+                                onSave(subtitle, subtitleName.trim())
+                            }
+                        },
+                        enabled = subtitleName.isNotBlank() && subtitleName != subtitle.name,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = CyberBlue,
+                            disabledContainerColor = CyberBlue.copy(alpha = 0.5f)
+                        )
+                    ) {
+                        Text("SAVE")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DeleteSubtitleConfirmationDialog(
+    subtitleName: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = GlassSurface,
+        textContentColor = StarWhite,
+        titleContentColor = NeonPink,
+        title = {
+            Text("Delete Subtitle")
+        },
+        text = {
+            Column {
+                Text("Are you sure you want to delete subtitle '$subtitleName'?")
+                Text(
+                    "This will permanently delete the subtitle and all associated promises.",
+                    color = StarWhite.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = NeonPink
+                )
+            ) {
+                Text("DELETE")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = StarWhite
+                )
+            ) {
+                Text("CANCEL")
+            }
+        }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
