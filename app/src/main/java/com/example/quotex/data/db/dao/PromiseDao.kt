@@ -34,66 +34,66 @@ interface PromiseDao {
 
     /**
      * Get promises by category
-     * Uses LIKE pattern to match category name at the beginning of the title
+     * Uses LIKE pattern to match category name at the beginning of the title, followed by ':'
      */
-    @Query("SELECT * FROM promises WHERE title LIKE :categoryName || '%' ORDER BY id DESC")
+    @Query("SELECT * FROM promises WHERE title LIKE :categoryName || ':' || '%' ORDER BY id DESC")
     fun getPromisesByCategory(categoryName: String): Flow<List<PromiseEntity>>
 
     /**
      * Get a list of entities matching the category
      */
-    @Query("SELECT * FROM promises WHERE title LIKE :categoryName || '%'")
+    @Query("SELECT * FROM promises WHERE title LIKE :categoryName || ':' || '%'")
     suspend fun getPromisesByCategorySync(categoryName: String): List<PromiseEntity>
 
     /**
      * Delete all promises in a category
      * @return The number of promises deleted
      */
-    @Query("DELETE FROM promises WHERE title LIKE :categoryName || '%'")
+    @Query("DELETE FROM promises WHERE title LIKE :categoryName || ':' || '%'")
     suspend fun deletePromisesByCategory(categoryName: String): Int
 
     // ----- Title related operations -----
 
     /**
      * Get promises by category and title
-     * Searches for both in reference field to simulate title storage
+     * Searches for category in title field and title prefix in reference field.
      */
-    @Query("SELECT * FROM promises WHERE title LIKE :categoryName || '%' AND reference LIKE :titleName || '|%'")
+    @Query("SELECT * FROM promises WHERE title LIKE :categoryName || ':' || '%' AND reference LIKE :titleName || '|%'")
     fun getPromisesByCategoryAndTitle(categoryName: String, titleName: String): Flow<List<PromiseEntity>>
 
     /**
      * Get a list of entities matching the category and title
      */
-    @Query("SELECT * FROM promises WHERE title LIKE :categoryName || '%' AND reference LIKE :titleName || '|%'")
+    @Query("SELECT * FROM promises WHERE title LIKE :categoryName || ':' || '%' AND reference LIKE :titleName || '|%'")
     suspend fun getPromisesByCategoryAndTitleSync(categoryName: String, titleName: String): List<PromiseEntity>
 
     /**
      * Delete all promises in a specific title in a category
      * @return The number of promises deleted
      */
-    @Query("DELETE FROM promises WHERE title LIKE :categoryName || '%' AND reference LIKE :titleName || '|%'")
+    @Query("DELETE FROM promises WHERE title LIKE :categoryName || ':' || '%' AND reference LIKE :titleName || '|%'")
     suspend fun deletePromisesByCategoryAndTitle(categoryName: String, titleName: String): Int
 
     // ----- Subtitle related operations -----
 
     /**
      * Get promises by category, title, and subtitle
-     * Searches using a concatenated pattern in the reference field
+     * Searches for category in title field and exact title|subtitle in reference field.
      */
-    @Query("SELECT * FROM promises WHERE title LIKE :categoryName || '%' AND reference LIKE :titleName || '|' || :subtitleName || '%'")
+    @Query("SELECT * FROM promises WHERE title LIKE :categoryName || ':' || '%' AND reference = :titleName || '|' || :subtitleName")
     fun getPromisesByCategoryTitleAndSubtitle(categoryName: String, titleName: String, subtitleName: String): Flow<List<PromiseEntity>>
 
     /**
      * Get a list of entities matching the category, title, and subtitle
      */
-    @Query("SELECT * FROM promises WHERE title LIKE :categoryName || '%' AND reference LIKE :titleName || '|' || :subtitleName || '%'")
+    @Query("SELECT * FROM promises WHERE title LIKE :categoryName || ':' || '%' AND reference = :titleName || '|' || :subtitleName")
     suspend fun getPromisesByCategoryTitleAndSubtitleSync(categoryName: String, titleName: String, subtitleName: String): List<PromiseEntity>
 
     /**
      * Delete all promises in a specific subtitle in a title in a category
      * @return The number of promises deleted
      */
-    @Query("DELETE FROM promises WHERE title LIKE :categoryName || '%' AND reference LIKE :titleName || '|' || :subtitleName || '%'")
+    @Query("DELETE FROM promises WHERE title LIKE :categoryName || ':' || '%' AND reference = :titleName || '|' || :subtitleName")
     suspend fun deletePromisesByCategoryTitleAndSubtitle(categoryName: String, titleName: String, subtitleName: String): Int
 
     // ----- Helper and utility operations -----

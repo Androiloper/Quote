@@ -10,6 +10,7 @@ import com.example.quotex.model.Title
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -25,9 +26,10 @@ class PromisesRepository @Inject constructor(
 ) {
     companion object {
         private const val TAG = "PromisesRepository"
-        private const val CATEGORY_SEPARATOR = ":"
-        private const val TITLE_SEPARATOR = "|"
-        private const val SUBTITLE_SEPARATOR = ">"
+        // Existing separators
+        const val CATEGORY_SEPARATOR = ":" // Made public for ViewModels if needed, or keep private
+        const val TITLE_SEPARATOR = "|"
+        const val SUBTITLE_SEPARATOR = ">" // Note: This separator doesn't seem used in reference parsing for Title/Subtitle
     }
 
     init {
@@ -133,12 +135,14 @@ class PromisesRepository @Inject constructor(
     suspend fun renameCategory(oldName: String, newName: String) {
         try {
             // Get all promises with the old category name
-            val promisesToUpdate = promiseDao.getPromisesByCategory(oldName)
+            val promisesToUpdate = promiseDao.getPromisesByCategorySync(oldName)
 
             // Update each promise with the new category name
             promisesToUpdate.forEach { entity ->
-                val updatedTitle = entity.title.replace(oldName, newName)
-                promiseDao.updatePromise(entity.copy(title = updatedTitle))
+                val titleParts = entity.title.split(CATEGORY_SEPARATOR, limit = 2)
+                val actualPromiseTitle = if (titleParts.size > 1) titleParts[1] else titleParts[0]
+                val updatedEntityTitle = "$newName$CATEGORY_SEPARATOR$actualPromiseTitle"
+                promiseDao.updatePromise(entity.copy(title = updatedEntityTitle))
             }
 
             Log.d(TAG, "Category renamed from '$oldName' to '$newName', updated ${promisesToUpdate.size} promises")
@@ -169,23 +173,20 @@ class PromisesRepository @Inject constructor(
     fun getTitlesByCategory(categoryName: String): Flow<List<Title>> =
         promiseDao.getPromisesByCategory(categoryName)
             .map { entities ->
-                // Extract titles from the metadata (reference field in this simplified example)
                 entities
                     .mapNotNull {
-                        val titlePart = it.reference.split(TITLE_SEPARATOR).firstOrNull()
-                        titlePart?.let { title ->
-                            // Use format: "TITLE|Subtitle"
-                            title.takeIf { it.isNotBlank() }
-                        }
+                        val titlePart = it.reference.split(TITLE_SEPARATOR).firstOrNull()?.trim()
+                        titlePart?.takeIf { it.isNotBlank() }
                     }
                     .distinct()
                     .sorted()
                     .mapIndexed { index, name ->
-                        // Find the appropriate categoryId from the Category list
-                        // In a real app, this would be stored in the Title entity
+                        // This categoryId simulation might be problematic if category IDs are not stable.
+                        // A proper relational DB would handle this.
+                        val category = getCategories().first().find { it.name == categoryName } // Inefficient
                         Title(
-                            id = index.toLong() + 1,
-                            categoryId = index.toLong() + 1, // Simulate categoryId
+                            id = index.toLong() + 1, // ID should be unique across all titles or stable
+                            categoryId = category?.id ?: -1L, // Attempt to find actual category ID
                             name = name
                         )
                     }
@@ -200,15 +201,13 @@ class PromisesRepository @Inject constructor(
      */
     suspend fun renameTitle(categoryName: String, oldTitle: String, newTitle: String) {
         try {
-            // Get all promises with the old title
-            val promises = promiseDao.getPromisesByCategoryAndTitle(categoryName, oldTitle)
-
-            // Update each promise with the new title
+            val promises = promiseDao.getPromisesByCategoryAndTitleSync(categoryName, oldTitle)
             promises.forEach { entity ->
-                val updatedReference = entity.reference.replace("$oldTitle$TITLE_SEPARATOR", "$newTitle$TITLE_SEPARATOR")
+                val parts = entity.reference.split(TITLE_SEPARATOR, limit = 2)
+                val subtitlePart = if (parts.size > 1) TITLE_SEPARATOR + parts[1] else ""
+                val updatedReference = "$newTitle$subtitlePart"
                 promiseDao.updatePromise(entity.copy(reference = updatedReference))
             }
-
             Log.d(TAG, "Title renamed from '$oldTitle' to '$newTitle' in category '$categoryName'")
         } catch (e: Exception) {
             Log.e(TAG, "Error renaming title: ${e.message}", e)
@@ -237,21 +236,22 @@ class PromisesRepository @Inject constructor(
     fun getSubtitlesByTitle(categoryName: String, titleName: String): Flow<List<Subtitle>> =
         promiseDao.getPromisesByCategoryAndTitle(categoryName, titleName)
             .map { entities ->
-                // Extract subtitles from the metadata
                 entities
                     .mapNotNull {
                         val parts = it.reference.split(TITLE_SEPARATOR)
                         if (parts.size > 1) {
-                            // Format: "TITLE|SUBTITLE"
-                            parts[1].takeIf { it.isNotBlank() }
+                            parts[1].trim().takeIf { it.isNotBlank() }
                         } else null
                     }
                     .distinct()
                     .sorted()
                     .mapIndexed { index, name ->
+                        // Similar issue with titleId simulation
+                        val titlesForCategory = getTitlesByCategory(categoryName).first()
+                        val title = titlesForCategory.find { it.name == titleName }
                         Subtitle(
-                            id = index.toLong() + 1,
-                            titleId = index.toLong() + 1, // Simulate titleId
+                            id = index.toLong() + 1, // ID should be unique across all subtitles or stable
+                            titleId = title?.id ?: -1L, // Attempt to find actual title ID
                             name = name
                         )
                     }
@@ -266,15 +266,12 @@ class PromisesRepository @Inject constructor(
      */
     suspend fun renameSubtitle(categoryName: String, titleName: String, oldSubtitle: String, newSubtitle: String) {
         try {
-            // Get all promises with the old subtitle
-            val promises = promiseDao.getPromisesByCategoryTitleAndSubtitle(categoryName, titleName, oldSubtitle)
-
-            // Update each promise with the new subtitle
+            val promises = promiseDao.getPromisesByCategoryTitleAndSubtitleSync(categoryName, titleName, oldSubtitle)
             promises.forEach { entity ->
-                val updatedReference = entity.reference.replace("$titleName$TITLE_SEPARATOR$oldSubtitle", "$titleName$TITLE_SEPARATOR$newSubtitle")
+                // entity.reference is "TitleName|OldSubtitleName"
+                val updatedReference = "$titleName$TITLE_SEPARATOR$newSubtitle"
                 promiseDao.updatePromise(entity.copy(reference = updatedReference))
             }
-
             Log.d(TAG, "Subtitle renamed from '$oldSubtitle' to '$newSubtitle' in title '$titleName'")
         } catch (e: Exception) {
             Log.e(TAG, "Error renaming subtitle: ${e.message}", e)
@@ -294,6 +291,24 @@ class PromisesRepository @Inject constructor(
             throw e
         }
     }
+
+    // ---- START: New method for fetching promises by full hierarchy ----
+    /**
+     * Get promises for a specific category, title, and subtitle.
+     * Assumes PromiseDao has a method:
+     * `fun getPromisesByCategoryTitleAndSubtitle(categoryName: String, titleName: String, subtitleName: String): Flow<List<PromiseEntity>>`
+     * that correctly filters based on these names by querying the `title` and `reference` fields of PromiseEntity.
+     */
+    fun getPromisesByHierarchy(categoryName: String, titleName: String, subtitleName: String): Flow<List<Promise>> =
+        promiseDao.getPromisesByCategoryTitleAndSubtitle(categoryName, titleName, subtitleName)
+            .map { entities ->
+                entities.map { it.toPromise() } // Assuming PromiseEntity.toPromise() correctly maps to Promise model
+            }
+            .catch { e ->
+                Log.e(TAG, "Error getting promises for hierarchy ($categoryName > $titleName > $subtitleName): ${e.message}", e)
+                emit(emptyList())
+            }
+    // ---- END: New method ----
 
     // ---- Helper and utility methods ----
 
@@ -336,3 +351,26 @@ class PromisesRepository @Inject constructor(
                 emit(emptyList())
             }
 }
+
+// Ensure your PromiseEntity.kt has these (or similar logic):
+// object PromiseEntity {
+//    fun fromPromise(promise: Promise): PromiseEntity {
+//        return PromiseEntity(id = promise.id, title = promise.title, verse = promise.verse, reference = promise.reference)
+//    }
+// }
+// fun PromiseEntity.toPromise(): Promise {
+//    return Promise(id = this.id, title = this.title, verse = this.verse, reference = this.reference)
+// }
+// And your PromiseDao interface has:
+// @Query("SELECT * FROM promises WHERE SUBSTR(title, 1, LENGTH(:categoryName)) = :categoryName AND SUBSTR(title, LENGTH(:categoryName)+1, 1) = ':' AND SUBSTR(reference, 1, LENGTH(:titleName)) = :titleName AND SUBSTR(reference, LENGTH(:titleName)+1, 1) = '|' AND SUBSTR(reference, LENGTH(:titleName)+2) = :subtitleName")
+// fun getPromisesByCategoryTitleAndSubtitle(categoryName: String, titleName: String, subtitleName: String): Flow<List<PromiseEntity>>
+// The query above is an example and might need adjustment based on exact storage and SQL dialect (e.g., using LIKE and wildcards, or proper string functions).
+// A simpler query might be needed if PromiseEntity.title is *just* category, and PromiseEntity.reference is *just* title, and another field for subtitle.
+// But based on your repository, it seems title and reference are compound.
+// For example, a query for getPromisesByCategoryTitleAndSubtitle might look like:
+// @Query("""
+//    SELECT * FROM promises
+//    WHERE title LIKE :categoryName || '${PromisesRepository.CATEGORY_SEPARATOR}' || '%'
+//    AND reference = :titleName || '${PromisesRepository.TITLE_SEPARATOR}' || :subtitleName
+// """)
+// fun getPromisesByCategoryTitleAndSubtitle(categoryName: String, titleName: String, subtitleName: String): Flow<List<PromiseEntity>>

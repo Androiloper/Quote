@@ -47,8 +47,8 @@ import com.example.quotex.ui.theme.*
 @Composable
 fun SubtitleListScreen(
     viewModel: CategoryViewModel = hiltViewModel(),
-    category: String,
-    title: String,
+    category: String, // This is the categoryName
+    title: String,    // This is the titleName
     onBackClick: () -> Unit
 ) {
     var showAddSubtitleDialog by remember { mutableStateOf(false) }
@@ -76,8 +76,9 @@ fun SubtitleListScreen(
     }
 
     // Load data when the screen is first composed
-    LaunchedEffect(title) {
-        viewModel.loadSubtitlesByTitle(title)
+    // Pass both category (categoryName) and title (titleName)
+    LaunchedEffect(category, title) {
+        viewModel.loadSubtitlesByTitle(categoryName = category, titleName = title)
     }
 
     // Default to the first subtitle if none is selected
@@ -136,7 +137,7 @@ fun SubtitleListScreen(
                 TopAppBar(
                     title = {
                         Text(
-                            title,
+                            title, // Displaying the titleName from screen params
                             style = MaterialTheme.typography.headlineLarge
                         )
                     },
@@ -184,7 +185,7 @@ fun SubtitleListScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "Sub TITLE",
+                        text = "SUB TITLES", // Changed "Sub TITLE" to "SUB TITLES" for clarity
                         style = MaterialTheme.typography.titleLarge,
                         color = StarWhite
                     )
@@ -202,8 +203,7 @@ fun SubtitleListScreen(
                     }
                 }
 
-                if (isLoading) {
-                    // Show loading indicator for subtitles
+                if (isLoading && subtitles.isEmpty()) { // Show loading only if subtitles are not yet loaded
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -213,7 +213,6 @@ fun SubtitleListScreen(
                         FuturisticLoadingIndicator()
                     }
                 } else if (subtitles.isEmpty()) {
-                    // Show empty state for subtitles
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -252,7 +251,7 @@ fun SubtitleListScreen(
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(150.dp)
+                            .height(150.dp) // Consider making this dynamic or larger if needed
                     ) {
                         items(subtitles) { subtitle ->
                             SubtitleItem(
@@ -303,7 +302,7 @@ fun SubtitleListScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "All PROMISES",
+                        text = "ALL PROMISES",
                         style = MaterialTheme.typography.titleLarge,
                         color = StarWhite,
                         modifier = Modifier.weight(1f)
@@ -312,7 +311,6 @@ fun SubtitleListScreen(
 
                 // Show promises for selected subtitle
                 if (selectedSubtitle == null) {
-                    // No subtitle selected yet
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -329,8 +327,7 @@ fun SubtitleListScreen(
                             textAlign = TextAlign.Center
                         )
                     }
-                } else if (isLoading) {
-                    // Loading promises
+                } else if (isLoading && promises.isEmpty()) { // Show loading only if promises for selected subtitle are not yet loaded
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -340,7 +337,6 @@ fun SubtitleListScreen(
                         FuturisticLoadingIndicator()
                     }
                 } else if (promises.isEmpty()) {
-                    // No promises yet
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -394,8 +390,12 @@ fun SubtitleListScreen(
             AddSubtitleDialog(
                 onDismiss = { showAddSubtitleDialog = false },
                 onSave = { subtitleName ->
-                    // Create new subtitle for this title
-                    viewModel.createSubtitle(subtitleName, title)
+                    // Create new subtitle for this title and category
+                    viewModel.createSubtitle(
+                        name = subtitleName,
+                        titleName = title,       // title parameter from SubtitleListScreen
+                        categoryName = category  // category parameter from SubtitleListScreen
+                    )
                     showAddSubtitleDialog = false
                 }
             )
@@ -437,26 +437,21 @@ fun SubtitleListScreen(
         if (showAddPromiseDialog) {
             if (selectedSubtitle != null) {
                 AddPromiseDialog(
-                    subtitle = selectedSubtitle?.name ?: "Default",
+                    subtitleName = selectedSubtitle?.name ?: "Default", // Pass subtitle name for dialog title
                     onDismiss = { showAddPromiseDialog = false },
-                    onSave = { verse, reference ->
+                    onSave = { actualPromiseTitle, verseText, scriptureReference ->
                         // Create new promise for this subtitle
                         viewModel.createPromise(
-                            subtitleId = selectedSubtitle?.id ?: 0,
-                            title = category, // Use category as the title for the promise
-                            verse = verse,
-                            reference = reference
+                            actualPromiseTitle = actualPromiseTitle,
+                            verseText = verseText,
+                            scriptureReference = scriptureReference
                         )
                         showAddPromiseDialog = false
                     }
                 )
             } else if (subtitles.isNotEmpty()) {
-                // If no subtitle is selected but we have subtitles,
-                // select the first one and then show the dialog
                 viewModel.selectSubtitle(subtitles.first().id)
-                // The dialog will show once the selectedSubtitle is updated
             } else {
-                // No subtitles exist, show create subtitle dialog instead
                 showAddSubtitleDialog = true
                 showAddPromiseDialog = false
             }
@@ -497,7 +492,6 @@ fun SubtitleItem(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Subtitle name
             Text(
                 text = subtitle.name,
                 style = MaterialTheme.typography.titleMedium,
@@ -505,10 +499,7 @@ fun SubtitleItem(
                 color = if (isSelected) StarWhite else StarWhite.copy(alpha = 0.7f),
                 modifier = Modifier.weight(1f)
             )
-
-            // Action buttons
             Row {
-                // Edit button
                 IconButton(
                     onClick = onEditClick,
                     modifier = Modifier
@@ -521,8 +512,6 @@ fun SubtitleItem(
                         tint = CyberBlue
                     )
                 }
-
-                // Delete button
                 IconButton(
                     onClick = onDeleteClick,
                     modifier = Modifier
@@ -555,26 +544,48 @@ fun PromiseItem(
                 .background(GlassSurface.copy(alpha = 0.2f))
                 .padding(16.dp)
         ) {
-            // Promise title
+            // Promise.title from DB is "CategoryName:ActualPromiseTitle"
+            // We should probably parse and display only ActualPromiseTitle here
+            val actualPromiseTitle = promise.title.substringAfterLast(':', promise.title)
             Text(
-                text = promise.title,
+                text = actualPromiseTitle,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium,
                 color = ElectricGreen,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            // Promise verse
+            // Promise.verse from DB might be "ScriptureRef - VerseText"
+            // We should parse this too if that's the case.
+            // For now, assume promise.verse is just the verse text as per current AddPromiseDialog inputs
             Text(
-                text = "\"${promise.verse}\"",
+                text = "\"${promise.verse}\"", // This will show "ScriptureRef - VerseText" if combined
                 style = MaterialTheme.typography.bodyLarge,
                 color = StarWhite,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            // Promise reference
+            // Promise.reference from DB is "TitleName|SubtitleName"
+            // If scripture reference is stored in promise.verse, we might not need to display this here,
+            // or display it differently. Assuming it's meant to be the hierarchy path.
+            // For clarity, let's display the scripture reference part if it's combined in verse.
+            // If the `scriptureReference` is stored separately, this `promise.reference`
+            // (which is Title|Subtitle) might not be what you want to show as "reference" here.
+            // Let's assume for now promise.verse is "Scripture Ref - Actual Verse"
+            // And promise.reference is "TitleName|SubtitleName"
+            // The UI for AddPromiseDialog takes "verse" and "reference (e.g. John 3:16)"
+            // ViewModel's createPromise takes "actualPromiseTitle", "verseText", "scriptureReference"
+            // ViewModel stores:
+            //  Promise.title = "Category:ActualPromiseTitle"
+            //  Promise.verse = "ScriptureReference - VerseText"
+            //  Promise.reference = "TitleName|SubtitleName"
+
+            val scriptureAndVerse = promise.verse.split(" - ", limit = 2)
+            val scriptureRefText = if (scriptureAndVerse.size > 1) scriptureAndVerse[0] else promise.reference // Fallback if parsing fails
+            // val actualVerseText = if (scriptureAndVerse.size > 1) scriptureAndVerse[1] else promise.verse // already displayed above as promise.verse
+
             Text(
-                text = promise.reference,
+                text = scriptureRefText, // Display the scripture reference from the parsed promise.verse
                 style = MaterialTheme.typography.bodyMedium,
                 fontStyle = FontStyle.Italic,
                 color = CyberBlue,
@@ -616,7 +627,6 @@ fun AddSubtitleDialog(
                     fontWeight = FontWeight.Bold,
                     color = ElectricGreen
                 )
-
                 OutlinedTextField(
                     value = subtitleName,
                     onValueChange = { subtitleName = it },
@@ -634,7 +644,6 @@ fun AddSubtitleDialog(
                     ),
                     singleLine = true
                 )
-
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
@@ -648,7 +657,6 @@ fun AddSubtitleDialog(
                     ) {
                         Text("CANCEL")
                     }
-
                     Button(
                         onClick = {
                             if (subtitleName.isNotBlank()) {
@@ -702,7 +710,6 @@ fun EditSubtitleDialog(
                     fontWeight = FontWeight.Bold,
                     color = CyberBlue
                 )
-
                 OutlinedTextField(
                     value = subtitleName,
                     onValueChange = { subtitleName = it },
@@ -720,7 +727,6 @@ fun EditSubtitleDialog(
                     ),
                     singleLine = true
                 )
-
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
@@ -734,7 +740,6 @@ fun EditSubtitleDialog(
                     ) {
                         Text("CANCEL")
                     }
-
                     Button(
                         onClick = {
                             if (subtitleName.isNotBlank()) {
@@ -802,15 +807,17 @@ fun DeleteSubtitleConfirmationDialog(
     )
 }
 
+// Corrected AddPromiseDialog function
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddPromiseDialog(
-    subtitle: String,
+    subtitleName: String,
     onDismiss: () -> Unit,
-    onSave: (String, String) -> Unit
+    onSave: (actualPromiseTitle: String, verseText: String, scriptureReference: String) -> Unit
 ) {
-    var verse by remember { mutableStateOf("") }
-    var reference by remember { mutableStateOf("") }
+    var actualPromiseTitleState by remember { mutableStateOf("") }
+    var verseTextState by remember { mutableStateOf("") } // Corrected: mutableStateOf
+    var scriptureReferenceState by remember { mutableStateOf("") }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -831,15 +838,33 @@ fun AddPromiseDialog(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "ADD PROMISE TO '$subtitle'",
+                    text = "ADD PROMISE TO '$subtitleName'",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = ElectricGreen
                 )
 
                 OutlinedTextField(
-                    value = verse,
-                    onValueChange = { verse = it },
+                    value = actualPromiseTitleState,
+                    onValueChange = { actualPromiseTitleState = it },
+                    label = { Text("Promise Title") },
+                    placeholder = { Text("E.g., Trust in God") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = ElectricGreen,
+                        unfocusedBorderColor = StarWhite.copy(alpha = 0.5f),
+                        focusedTextColor = StarWhite,
+                        unfocusedTextColor = StarWhite,
+                        cursorColor = ElectricGreen,
+                        focusedLabelColor = ElectricGreen,
+                        unfocusedLabelColor = StarWhite.copy(alpha = 0.7f)
+                    ),
+                    singleLine = true
+                )
+
+                OutlinedTextField(
+                    value = verseTextState,
+                    onValueChange = { verseTextState = it },
                     label = { Text("Promise Verse") },
                     placeholder = { Text("Enter the verse text") },
                     modifier = Modifier.fillMaxWidth(),
@@ -856,9 +881,9 @@ fun AddPromiseDialog(
                 )
 
                 OutlinedTextField(
-                    value = reference,
-                    onValueChange = { reference = it },
-                    label = { Text("Reference") },
+                    value = scriptureReferenceState,
+                    onValueChange = { scriptureReferenceState = it },
+                    label = { Text("Scripture Reference") },
                     placeholder = { Text("E.g., John 3:16") },
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -889,11 +914,15 @@ fun AddPromiseDialog(
 
                     Button(
                         onClick = {
-                            if (verse.isNotBlank()) {
-                                onSave(verse.trim(), reference.trim())
+                            if (actualPromiseTitleState.isNotBlank() && verseTextState.isNotBlank()) {
+                                onSave(
+                                    actualPromiseTitleState.trim(),
+                                    verseTextState.trim(),
+                                    scriptureReferenceState.trim()
+                                )
                             }
                         },
-                        enabled = verse.isNotBlank(),
+                        enabled = actualPromiseTitleState.isNotBlank() && verseTextState.isNotBlank(),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = NebulaPurple,
                             disabledContainerColor = NebulaPurple.copy(alpha = 0.5f)
@@ -905,4 +934,5 @@ fun AddPromiseDialog(
             }
         }
     }
+
 }

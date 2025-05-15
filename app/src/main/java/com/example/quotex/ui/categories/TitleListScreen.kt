@@ -154,6 +154,7 @@ fun TitleListScreen(
             }
         ) { paddingValues ->
             // Adding a blue border around the list area to match the design
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -179,7 +180,10 @@ fun TitleListScreen(
                         ),
                         shape = MaterialTheme.shapes.medium
                     )
-            ) {
+            )
+             {
+
+
                 if (isLoading) {
                     // Show loading indicator
                     Box(
