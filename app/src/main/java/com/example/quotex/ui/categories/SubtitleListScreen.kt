@@ -42,6 +42,7 @@ import com.example.quotex.model.Subtitle
 import com.example.quotex.ui.components.FuturisticLoadingIndicator
 import com.example.quotex.ui.components.GlassCard
 import com.example.quotex.ui.theme.*
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,10 +82,12 @@ fun SubtitleListScreen(
         viewModel.loadSubtitlesByTitle(categoryName = category, titleName = title)
     }
 
-    // Default to the first subtitle if none is selected
-    LaunchedEffect(subtitles) {
-        if (subtitles.isNotEmpty() && selectedSubtitle == null) {
-            viewModel.selectSubtitle(subtitles.first().id)
+    // Add this extra LaunchedEffect to refresh subtitles when dialogs change state
+    LaunchedEffect(showAddSubtitleDialog, showAddPromiseDialog, showEditSubtitleDialog, showDeleteConfirmation) {
+        if (!showAddSubtitleDialog && !showAddPromiseDialog && !showEditSubtitleDialog && !showDeleteConfirmation) {
+            // Refresh when all dialogs are closed
+            delay(200)
+            viewModel.loadSubtitlesByTitle(categoryName = category, titleName = title)
         }
     }
 

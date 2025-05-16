@@ -3,12 +3,14 @@ package com.example.quotex.ui.categories
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.quotex.data.db.entities.PromiseEntity
 import com.example.quotex.data.repository.PromisesRepository
 import com.example.quotex.model.Category
 import com.example.quotex.model.Promise
 import com.example.quotex.model.Subtitle
 import com.example.quotex.model.Title
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -273,7 +275,8 @@ class CategoryViewModel @Inject constructor(
         }
     }
 
-    // Simplified createTitle (assumes it will appear via promises later or needs a dummy promise)
+    // In CategoryViewModel.kt
+    // In CategoryViewModel.kt
     fun createTitle(name: String, categoryName: String) {
         if (name.isBlank()) {
             _error.value = "Title name cannot be empty."
@@ -287,22 +290,34 @@ class CategoryViewModel @Inject constructor(
                     _error.value = "Category '$categoryName' not found for creating title."
                     return@launch
                 }
-                if (_titles.value.any { it.categoryId == category.id && it.name.equals(name, ignoreCase = true) }) {
+
+                // Check if title already exists
+                if (_titles.value.any { it.name.equals(name, ignoreCase = true) }) {
                     _error.value = "Title '$name' already exists in category '$categoryName'."
                     return@launch
                 }
 
-                // This is a placeholder. A real "createTitle" would involve creating a promise
-                // with this new title, or having separate tables.
-                // For now, just add to VM state if not already there.
-                val newId = (_titles.value.maxOfOrNull { it.id } ?: 0L) + 1L
-                val newTitle = Title(id = newId, categoryId = category.id, name = name)
-                _titles.value = (_titles.value + newTitle).sortedBy { it.name }
-                _selectedTitle.value = newTitle // Auto-select
+                // CRITICAL: Match database format exactly based on the sample data
+                // title field = category name directly (not "CategoryName:Title")
+                // reference field = "TitleName|SubtitleName|ScriptureReference"
+                val initialPromise = Promise(
+                    id = System.currentTimeMillis(),
+                    // FIXED FORMAT: "CategoryName:Title Entry" instead of just CategoryName
+                    title = "$categoryName${PromisesRepository.CATEGORY_SEPARATOR}Title Entry",
+                    verse = "This is a placeholder for title '$name'",
+                    // Format: "TitleName|SubtitleName"
+                    reference = "$name${PromisesRepository.TITLE_SEPARATOR}General"
+                )
 
-                // Create a default subtitle for this new title
-                createSubtitle("General", newTitle.name, categoryName)
-                Log.d("CategoryViewModel", "Simulated creation of title: $name in $categoryName")
+                // Save to database
+                promisesRepository.addPromise(initialPromise)
+
+                // Force refresh titles after database save
+                delay(300) // Ensure database operation completes
+                loadTitlesByCategory(categoryName)
+
+                Log.d("CategoryViewModel", "Created title: $name with format: title=$categoryName, reference=$name|General Reference")
+
             } catch (e: Exception) {
                 Log.e("CategoryViewModel", "Error creating title: ${e.message}", e)
                 _error.value = "Failed to create title: ${e.message}"
@@ -414,7 +429,6 @@ class CategoryViewModel @Inject constructor(
         }
     }
 
-    // Simplified createSubtitle
     fun createSubtitle(name: String, titleName: String, categoryName: String) {
         if (name.isBlank()) {
             _error.value = "Subtitle name cannot be empty."
@@ -423,25 +437,36 @@ class CategoryViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val title = _titles.value.find { it.name == titleName && it.categoryId == _selectedCategory.value?.id }
+                val title = _titles.value.find { it.name == titleName }
                 if (title == null) {
                     _error.value = "Title '$titleName' not found for creating subtitle."
                     return@launch
                 }
-                if (_subtitles.value.any { it.titleId == title.id && it.name.equals(name, ignoreCase = true) }) {
-                    _error.value = "Subtitle '$name' already exists for title '$titleName'."
-                    return@launch
-                }
 
-                // Placeholder for VM state
+                // Create actual database entry for subtitle
+                val subtitlePromise = Promise(
+                    id = System.currentTimeMillis(),
+                    title = "$categoryName${PromisesRepository.CATEGORY_SEPARATOR}Subtitle Entry",
+                    verse = "This is a placeholder for subtitle '$name'",
+                    // Format MUST match what repository extraction expects
+                    reference = "$titleName${PromisesRepository.TITLE_SEPARATOR}$name"
+                )
+
+                // Save to database
+                val promiseId = promisesRepository.addPromise(subtitlePromise)
+
+                // Important: Refresh subtitles from database
+                delay(100)
+                loadSubtitlesByTitle(categoryName, titleName)
+
+                Log.d("CategoryViewModel", "Created subtitle entry: $name under $titleName with ID $promiseId")
+
+                // Update VM state for immediate UI feedback
                 val newId = (_subtitles.value.maxOfOrNull { it.id } ?: 0L) + 1L
                 val newSubtitle = Subtitle(id = newId, titleId = title.id, name = name)
                 _subtitles.value = (_subtitles.value + newSubtitle).sortedBy { it.name }
-                _selectedSubtitle.value = newSubtitle // Auto-select
+                _selectedSubtitle.value = newSubtitle
 
-                // Load promises for this newly "created" and selected subtitle
-                loadPromisesForSubtitle()
-                Log.d("CategoryViewModel", "Simulated creation of subtitle: $name for $titleName")
             } catch (e: Exception) {
                 Log.e("CategoryViewModel", "Error creating subtitle: ${e.message}", e)
                 _error.value = "Failed to create subtitle: ${e.message}"
@@ -637,6 +662,7 @@ class CategoryViewModel @Inject constructor(
         }
     }
 
+
     fun toggleFavoritePromise(promiseId: Long) {
         viewModelScope.launch {
             // This is a mock implementation as 'favorite' isn't a DB field
@@ -671,4 +697,43 @@ class CategoryViewModel @Inject constructor(
     fun clearError() {
         _error.value = null
     }
+
+    fun debugTitleCreation(categoryName: String, titleName: String) {
+        viewModelScope.launch {
+            try {
+                // Direct low-level insertion
+                val entity = PromiseEntity(
+                    id = System.currentTimeMillis(),
+                    title = "$categoryName:", // Explicit format with colon
+                    verse = "Debug title entry",
+                    reference = "$titleName|General|Debug"
+                )
+
+                // Insert directly via DAO
+                promisesRepository.promiseDao.insertPromise(entity)
+
+                // List all entities matching this category
+                val entities = promisesRepository.promiseDao.getPromisesByCategory(categoryName).first()
+
+                Log.d("DEBUG", "===== DATABASE CONTENT =====")
+                Log.d("DEBUG", "Created test title: $categoryName:$titleName")
+                Log.d("DEBUG", "Found ${entities.size} entities for category '$categoryName':")
+
+                entities.forEach { entity ->
+                    Log.d("DEBUG", "Entity: id=${entity.id}, title='${entity.title}', ref='${entity.reference}'")
+
+                    // Extract and log title part
+                    val titlePart = entity.reference.split(PromisesRepository.TITLE_SEPARATOR).firstOrNull()?.trim()
+                    Log.d("DEBUG", "  -> Extracted title: '$titlePart'")
+                }
+
+                // Force refresh
+                loadTitlesByCategory(categoryName)
+                Log.d("DEBUG", "===========================")
+            } catch (e: Exception) {
+                Log.e("DEBUG", "Debug error: ${e.message}", e)
+            }
+        }
+    }
+
 }

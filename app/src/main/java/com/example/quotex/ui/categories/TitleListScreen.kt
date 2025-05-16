@@ -36,6 +36,7 @@ import com.example.quotex.model.Title
 import com.example.quotex.ui.components.FuturisticLoadingIndicator
 import com.example.quotex.ui.components.GlassCard
 import com.example.quotex.ui.theme.*
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,6 +72,13 @@ fun TitleListScreen(
         viewModel.loadTitlesByCategory(category)
     }
 
+    // Load titles on key changes
+    LaunchedEffect(category, showAddTitleDialog, showEditTitleDialog, showDeleteConfirmation) {
+        // Delay slightly to ensure database operations complete
+        delay(400)
+        Log.d("TitleListScreen", "Refreshing titles for category: $category")
+        viewModel.loadTitlesByCategory(category)
+    }
     // Create cosmic background - the same as in CategoryListScreen
     Box(
         modifier = Modifier
@@ -263,7 +271,11 @@ fun TitleListScreen(
                 onSave = { titleName ->
                     // Create new title and associate with this category
                     viewModel.createTitle(titleName, category)
+                    viewModel.debugTitleCreation(category, titleName)
                     showAddTitleDialog = false
+
+                    // Force refresh the titles list
+                    viewModel.loadTitlesByCategory(category)
                 }
             )
         }
@@ -372,11 +384,15 @@ fun TitleItem(
     }
 }
 
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddTitleDialog(
     onDismiss: () -> Unit,
     onSave: (String) -> Unit
+
+
 ) {
     var titleName by remember { mutableStateOf("") }
 
@@ -454,7 +470,11 @@ fun AddTitleDialog(
                 }
             }
         }
+
+
     }
+
+
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
