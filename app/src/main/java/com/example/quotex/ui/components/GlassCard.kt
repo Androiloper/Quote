@@ -152,12 +152,10 @@ fun FuturisticQuoteCard(
     var visible by remember { mutableStateOf(false) }
 
     // Set visible to true after composition to trigger animation
-    LaunchedEffect(quote) {
-        visible = false
-        kotlinx.coroutines.delay(100)
+    LaunchedEffect(Unit) { // Keyed on Unit to run once
+        kotlinx.coroutines.delay(100) // Optional delay for entry
         visible = true
     }
-
     GlassCard(
         modifier = modifier.padding(16.dp)
     ) {
