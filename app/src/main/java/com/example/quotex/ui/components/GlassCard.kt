@@ -67,6 +67,7 @@ import com.example.quotex.ui.theme.NebulaPurple
 import com.example.quotex.ui.theme.NeonPink
 import androidx.compose.runtime.LaunchedEffect
 
+import com.example.quotex.ui.theme.StarWhite // Ensure StarWhite is imported
 
 
 

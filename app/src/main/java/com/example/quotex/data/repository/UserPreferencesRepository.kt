@@ -8,7 +8,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
+import com.example.quotex.util.DataStoreManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -16,13 +16,12 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "user_preferences")
-
 @Singleton
 class UserPreferencesRepository @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    private val dataStore = context.dataStore
+    // Use the singleton DataStore from DataStoreManager
+    private val dataStore = DataStoreManager.getDataStore(context)
 
     val displayMode: Flow<Int> = dataStore.data
         .catch { e ->
@@ -33,7 +32,6 @@ class UserPreferencesRepository @Inject constructor(
             preferences[DISPLAY_MODE_KEY] ?: 0
         }
 
-    // Fix: Use actual dataStore instead of hardcoded flow
     val displayPromises: Flow<Boolean> = dataStore.data
         .catch { e ->
             Log.e("UserPreferences", "Error reading displayPromises", e)
@@ -67,7 +65,7 @@ class UserPreferencesRepository @Inject constructor(
     }
 
     companion object {
-        private val DISPLAY_MODE_KEY = intPreferencesKey("display_mode")
-        private val DISPLAY_PROMISES_KEY = booleanPreferencesKey("display_promises")
+        val DISPLAY_MODE_KEY = intPreferencesKey("display_mode")
+        val DISPLAY_PROMISES_KEY = booleanPreferencesKey("display_promises")
     }
 }

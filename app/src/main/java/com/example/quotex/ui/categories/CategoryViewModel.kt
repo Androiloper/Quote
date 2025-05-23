@@ -701,29 +701,31 @@ class CategoryViewModel @Inject constructor(
     fun debugTitleCreation(categoryName: String, titleName: String) {
         viewModelScope.launch {
             try {
-                // Direct low-level insertion
-                val entity = PromiseEntity(
+                // Direct low-level insertion using addPromise
+                val debugPromise = Promise(
                     id = System.currentTimeMillis(),
                     title = "$categoryName:", // Explicit format with colon
                     verse = "Debug title entry",
                     reference = "$titleName|General|Debug"
                 )
 
-                // Insert directly via DAO
-                promisesRepository.promiseDao.insertPromise(entity)
+                // Use repository's addPromise method
+                promisesRepository.addPromise(debugPromise)
 
-                // List all entities matching this category
-                val entities = promisesRepository.promiseDao.getPromisesByCategory(categoryName).first()
+                // This is the correct way to get promises by category
+                val promises = promisesRepository.getAllPromises().first().filter {
+                    it.title.startsWith("$categoryName:")
+                }
 
                 Log.d("DEBUG", "===== DATABASE CONTENT =====")
                 Log.d("DEBUG", "Created test title: $categoryName:$titleName")
-                Log.d("DEBUG", "Found ${entities.size} entities for category '$categoryName':")
+                Log.d("DEBUG", "Found ${promises.size} entities for category '$categoryName':")
 
-                entities.forEach { entity ->
-                    Log.d("DEBUG", "Entity: id=${entity.id}, title='${entity.title}', ref='${entity.reference}'")
+                promises.forEach { promise ->
+                    Log.d("DEBUG", "Entity: id=${promise.id}, title='${promise.title}', ref='${promise.reference}'")
 
                     // Extract and log title part
-                    val titlePart = entity.reference.split(PromisesRepository.TITLE_SEPARATOR).firstOrNull()?.trim()
+                    val titlePart = promise.reference.split(PromisesRepository.TITLE_SEPARATOR).firstOrNull()?.trim()
                     Log.d("DEBUG", "  -> Extracted title: '$titlePart'")
                 }
 
