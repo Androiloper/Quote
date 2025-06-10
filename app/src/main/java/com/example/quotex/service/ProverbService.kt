@@ -2,6 +2,7 @@
 package com.example.quotex.service
 
 import android.animation.ValueAnimator
+import android.annotation.SuppressLint
 import android.app.KeyguardManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -18,12 +19,15 @@ import android.os.IBinder
 import android.os.Looper
 import android.provider.Settings
 import android.util.Log
+import android.view.GestureDetector
 import android.view.Gravity
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
+import androidx.core.view.GestureDetectorCompat
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -38,6 +42,7 @@ import com.example.quotex.model.Quote
 import com.example.quotex.ui.main.MainActivity
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
+import kotlin.math.abs
 
 @AndroidEntryPoint
 class ProverbService : Service() {
@@ -71,6 +76,7 @@ class ProverbService : Service() {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val screenReceiver = ScreenReceiver()
     private var lastQuoteTime = 0L // Track when the last quote was shown
+    private lateinit var gestureDetector: GestureDetectorCompat
 
     override fun onCreate() {
         super.onCreate()
@@ -80,6 +86,9 @@ class ProverbService : Service() {
         try {
             startForeground(notificationId, createNotification())
             windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+
+            // Initialize GestureDetector
+            gestureDetector = GestureDetectorCompat(this, SwipeGestureListener())
 
             val filter = IntentFilter().apply {
                 addAction(Intent.ACTION_SCREEN_ON)
@@ -238,6 +247,7 @@ class ProverbService : Service() {
         }
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     private fun displayQuote(quote: Quote) {
         try {
             // Remove any existing view first
@@ -253,30 +263,42 @@ class ProverbService : Service() {
             val inflater = LayoutInflater.from(this)
             proverbView = inflater.inflate(R.layout.lock_screen_proverb, null)
 
+            proverbView?.setOnTouchListener { _, event ->
+                gestureDetector.onTouchEvent(event)
+                // Return true to indicate that the touch event has been consumed,
+                // especially if you want to prevent further propagation or if the gesture detector
+                // might not consume all types of events (like a simple tap if no onSingleTap is handled).
+                true
+            }
+
+
             val proverbText = proverbView?.findViewById<TextView>(R.id.proverb_text)
             val proverbReference = proverbView?.findViewById<TextView>(R.id.proverb_reference)
 
             proverbText?.text = quote.text
             proverbReference?.text = quote.reference
 
-            // IMPROVED WINDOW PARAMETERS
             val windowType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             } else {
                 WindowManager.LayoutParams.TYPE_SYSTEM_ALERT
             }
 
-            // Use different flags based on Android version
+            // Adjusted flags: Removed FLAG_NOT_FOCUSABLE, added FLAG_WATCH_OUTSIDE_TOUCH
+            // FLAG_NOT_TOUCH_MODAL allows events to pass to windows behind it.
+            // FLAG_WATCH_OUTSIDE_TOUCH is useful if you want to dismiss on outside touch, but for swipe,
+            // we need the view to receive touches.
             var flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                        WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                        WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+                        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL // Allows touches to pass through if not handled
             } else {
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                        WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
                         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                        WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+                        WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+                        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
             }
+
 
             val params = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
@@ -287,7 +309,7 @@ class ProverbService : Service() {
             ).apply {
                 gravity = Gravity.CENTER
                 // Ensure proper layering in the window stack
-                flags = flags or WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM
+                // flags = flags or WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM // This might conflict with touch handling
                 // Use highest possible layer
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     layoutInDisplayCutoutMode =
@@ -310,9 +332,9 @@ class ProverbService : Service() {
             }
             valueAnimator.start()
 
-            // Auto-hide after a longer delay (20 seconds instead of 15)
+            // Auto-hide after a longer delay (30 seconds)
             serviceScope.launch {
-                delay(20000)
+                delay(30000) // Changed from 20000 to 30000
                 valueAnimator.cancel()
                 hideProverb()
             }
@@ -327,18 +349,21 @@ class ProverbService : Service() {
             proverbView?.let { view ->
                 mainHandler.post {
                     try {
-                        windowManager.removeView(view)
-                        Log.d(tag, "Proverb view removed")
+                        if (view.windowToken != null) { // Check if the view is still attached
+                            windowManager.removeView(view)
+                            Log.d(tag, "Proverb view removed")
+                        }
                     } catch (e: Exception) {
                         Log.e(tag, "Error removing proverb view: ${e.message}")
                     }
                 }
             }
         } catch (e: Exception) {
-            Log.e(tag, "Error removing proverb view: ${e.message}")
+            Log.e(tag, "Error in hideProverb: ${e.message}")
         }
         proverbView = null
     }
+
 
     private fun isScreenOn(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {
@@ -354,6 +379,55 @@ class ProverbService : Service() {
         val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
         return !keyguardManager.isKeyguardLocked
     }
+
+    // Inner class to handle swipe gestures
+    private inner class SwipeGestureListener : GestureDetector.SimpleOnGestureListener() {
+        private val swipeThreshold = 100
+        private val swipeVelocityThreshold = 100
+
+        override fun onDown(e: MotionEvent): Boolean {
+            return true // Necessary for other gestures to be detected
+        }
+
+        override fun onFling(
+            e1: MotionEvent?,
+            e2: MotionEvent,
+            velocityX: Float,
+            velocityY: Float
+        ): Boolean {
+            if (e1 == null) return false
+            val diffY = e2.y - e1.y
+            val diffX = e2.x - e1.x
+            // Handle horizontal or vertical swipes
+            if (abs(diffX) > abs(diffY)) { // Horizontal swipe
+                if (abs(diffX) > swipeThreshold && abs(velocityX) > swipeVelocityThreshold) {
+                    if (diffX > 0) {
+                        // Swipe Right
+                        Log.d(tag, "Swipe Right detected, hiding proverb.")
+                    } else {
+                        // Swipe Left
+                        Log.d(tag, "Swipe Left detected, hiding proverb.")
+                    }
+                    hideProverb()
+                    return true
+                }
+            } else { // Vertical swipe
+                if (abs(diffY) > swipeThreshold && abs(velocityY) > swipeVelocityThreshold) {
+                    if (diffY > 0) {
+                        // Swipe Down
+                        Log.d(tag, "Swipe Down detected, hiding proverb.")
+                    } else {
+                        // Swipe Up
+                        Log.d(tag, "Swipe Up detected, hiding proverb.")
+                    }
+                    hideProverb()
+                    return true
+                }
+            }
+            return false
+        }
+    }
+
 
     inner class ScreenReceiver : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -373,7 +447,17 @@ class ProverbService : Service() {
                     if (displayMode == 2) {
                         Log.d(tag, "User present with display mode 2, showing proverb")
                         // Post with a delay to make sure the lock screen is fully dismissed
-                        mainHandler.postDelayed({ showProverb() }, 300)
+                        // and to avoid race conditions with hiding the view if it's already showing
+                        // from a SCREEN_ON event for example.
+                        mainHandler.removeCallbacksAndMessages(null) // Clear previous showProverb calls
+                        mainHandler.postDelayed({
+                            // Ensure we only show if the device is actually unlocked and screen is on
+                            if (isDeviceUnlocked() && isScreenOn()) {
+                                showProverb()
+                            } else {
+                                Log.d(tag, "User present triggered, but device is locked or screen off. Aborting show.")
+                            }
+                        }, 700) // Adjusted delay to ensure lock screen animations are complete
                     }
                 }
                 Intent.ACTION_SCREEN_OFF -> {
@@ -384,6 +468,9 @@ class ProverbService : Service() {
                     if (newMode >= 0) {
                         displayMode = newMode
                         Log.d(tag, "Updated display mode via broadcast: $displayMode")
+                        if (displayMode == 0) { // If mode turned off, hide immediately
+                            hideProverb()
+                        }
                     }
                 }
             }

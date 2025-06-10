@@ -70,15 +70,15 @@ fun CategoryListScreen(
         }
     }
 
-    // Load data when the screen is first composed.
     // The CategoryViewModel's init block already calls loadInitialData(),
     // which includes loading categories, recent, and favorite promises.
-    // These calls here act as an explicit refresh or ensure data is loaded
-    // if the init block was missed or if a refresh is desired upon screen entry.
+    // If a specific refresh action is needed for categories (e.g., on pull-to-refresh),
+    // a public method in the ViewModel would be appropriate. For initial load,
+    // the init block handles it.
     LaunchedEffect(Unit) {
-        viewModel.loadCategories()
-        viewModel.loadRecentPromises() // This is line 78 from the error image
-        viewModel.loadFavoritePromises() // This is line 79 from the error image
+        // viewModel.loadCategories() // This is also covered by loadInitialData in VM init.
+        // Keep if you specifically need to re-load categories here.
+        // Otherwise, it's redundant for the initial composition.
     }
 
     // Create cosmic background
@@ -168,6 +168,7 @@ fun CategoryListScreen(
                     .fillMaxSize()
                     .padding(paddingValues)
                     .padding(horizontal = 16.dp)
+                    .padding(vertical = 0.dp) // i added
             ) {
                 // Tabs for Recently and Favorite
                 Row(
@@ -211,13 +212,14 @@ fun CategoryListScreen(
                     }
                 } else {
                     LazyColumn(
-                        modifier = Modifier.fillMaxWidth().height(200.dp).padding(vertical = 8.dp)
+                        modifier = Modifier.fillMaxWidth().height(300.dp).padding(vertical = 8.dp)
                     ) {
                         items(currentPromisesList) { promise ->
                             GlassCard(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
+                                modifier =
+                                Modifier
+                                    .padding(paddingValues)
+                                    .fillMaxSize()
                                     .clickable { onPromiseClick(promise.id) } // Or navigate to a detail screen
                             ) {
                                 // Displaying promise.title which is "Category:ActualPromiseTitle"
@@ -272,7 +274,7 @@ fun CategoryListScreen(
                     }
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) { // Use LazyColumn for categories if they can exceed screen
-                        val chunkedCategories = categories.chunked(2)
+                        val chunkedCategories = categories.chunked(1)
                         items(chunkedCategories) { rowCategories ->
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),

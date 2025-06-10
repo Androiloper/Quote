@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -72,7 +73,7 @@ import com.example.quotex.ui.theme.StarWhite // Ensure StarWhite is imported
 
 
 
-
+/*
 /**
  * A futuristic card with glowing borders and glass-like appearance
  */
@@ -141,6 +142,30 @@ fun GlassCard(
         ) {
             content()
         }
+    }
+}
+
+ */
+
+@Composable
+fun GlassCard(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.2f),
+                        Color.White.copy(alpha = 0.1f)
+                    )
+                )
+            )
+           // .padding(16.dp)
+    ) {
+        content()
     }
 }
 
